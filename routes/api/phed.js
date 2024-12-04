@@ -9,7 +9,6 @@ const generateToken = require('../../middlewear/token')
 const router = express.Router();
 const InventoryPhed = require('../../models/InventoryPhed')
 const Grampanchayat = require('../../models/Grampanchayat');
-
 //---------------------------------------
 
 /**
@@ -366,17 +365,20 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
           return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
       }
 
-      // Deduct the asset quantity from the inventory (debit operation)
-      asset.quantity -= quantity;
+    // Add the asset quantity to the inventory (credit operation)
+asset.quantity += quantity; // Increase quantity
 
-      // Add an entry to the asset's edit history (decrease in quantity)
-      asset.editHistory.push({
-          quantityAdded: -quantity, // Decrease quantity
-          updatedQuantity: asset.quantity, // New updated quantity
-          description, // Description of the transaction
-          creditOrDebit: 'debit', // Transaction is a debit (decrease in quantity)
-          gramPanchayatId: gramPanchayat._id, // Track which Gram Panchayat received the asset
-      });
+// Add an entry to the asset's edit history (increase in quantity)
+asset.editHistory.push({
+    quantityAdded: quantity, // Increase quantity
+    updatedQuantity: asset.quantity, // New updated quantity
+    description, // Description of the transaction
+    creditOrDebit: 'credit', // Transaction is a credit (increase in quantity)
+    gramPanchayatId: gramPanchayat._id, // Track which Gram Panchayat received the asset
+});
+
+// Save the updated asset document
+await asset.save();
 
       // Save the updated asset document
       await asset.save();
@@ -473,7 +475,7 @@ router.get('/get-assets-by-gram/:gramPanchayatId', async (req, res) => {
 //----------------------------
 
 // API to post inventory distribution information for a specific Gram Panchayat by ID
-// http://localhost:5050/v1/api/phed/get-assets-by-gram/:gramPanchayatId
+// http://localhost:5050/v1/api/phed/inventory/give-to-gram/:gramPanchayatId
 router.post('/inventory/give-to-gram/:gramPanchayatId', async (req, res) => {
   const { gramPanchayatId } = req.params;
   const { inventoryName, quantity, description, date } = req.body;
