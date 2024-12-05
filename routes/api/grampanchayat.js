@@ -97,6 +97,40 @@ router.post('/login', async (req, res) => {
     }
 });
 
+
+/// http://localhost:5050/v1/api/grampanchayat/gp-details/grampanchayatId
+router.get('/gp-details/:grampanchayatId', async (req, res) => {
+    try {
+        // Extract the grampanchayatId from the route parameter
+        const { grampanchayatId } = req.params;
+  
+        // Find the Grampanchayat by its `grampanchayatId`
+        const grampanchayat = await Grampanchayat.findOne({ grampanchayatId: grampanchayatId });
+  
+        // Check if the Grampanchayat is not found
+        if (!grampanchayat) {
+            return res.status(404).json({
+                success: false,
+                message: `Grampanchayat with ID ${grampanchayatId} not found!`,
+            });
+        }
+  
+        // Return the Grampanchayat data in the response
+        res.status(200).json({
+            success: true,
+            message: `Grampanchayat with ID ${grampanchayatId} found successfully!`,
+            data: grampanchayat,
+        });
+    } catch (error) {
+        console.error('Error fetching Grampanchayat by ID:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching the Grampanchayat.',
+            error: error.message,
+        });
+    }
+  });
+
 //list of all Grampanchayat
 // http://localhost:5050/v1/api/grampanchayat/list main
 // search by city name http://localhost:5050/v1/api/grampanchayat/list?city=nuh
@@ -579,8 +613,8 @@ router.get('/complaintlist', authenticateGrampanchayat, async (req, res) => {
 
 
 // Create a new fund request
-// POST http://localhost:5050/v1/api/fund-request
-router.post('/', authenticateGrampanchayat, async (req, res) => {
+// POST http://localhost:5050/v1/api/grampanchayat/fund-request
+router.post('/fund-request', authenticateGrampanchayat, async (req, res) => {
     const { amountRequested, purpose } = req.body;
     const grampanchayatId = req.user._id; // Get the Grampanchayat ID from the authenticated user
 
@@ -602,6 +636,7 @@ router.post('/', authenticateGrampanchayat, async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
+
 
 // Get all fund requests (for PHED)
 // GET http://localhost:5050/v1/api/fund-request
