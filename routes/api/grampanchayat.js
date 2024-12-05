@@ -576,39 +576,6 @@ router.get('/complaintlist', authenticateGrampanchayat, async (req, res) => {
 
 
 
-// Register a new complaint
-// POST http://localhost:5050/v1/api/complaint/register
-router.post('/register', async (req, res) => {
-    const { grampanchayatId, description, purpose } = req.body;
-
-    try {
-        // Validate required fields
-        if (!grampanchayatId  || !description || !purpose) {
-            return res.status(400).json({ success: false, message: 'Description and purpose are required.' });
-        }
-
-
-        // Create a new complaint
-        const newComplaint = new Complaint({
-            grampanchayatId,
-            complainNo : complaintId,
-            description,
-            purpose,
-        });
-
-        // Save the complaint to the database
-        const savedComplaint = await newComplaint.save();
-
-        res.status(201).json({
-            success: true,
-            message: 'Complaint registered successfully.',
-            data: savedComplaint,
-        });
-    } catch (error) {
-        console.error('Error during complaint registration:', error);
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
 
 
 
