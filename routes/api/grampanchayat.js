@@ -98,38 +98,38 @@ router.post('/login', async (req, res) => {
 });
 
 
-/// http://localhost:5050/v1/api/grampanchayat/gp-details/grampanchayatId
-router.get('/gp-details/:grampanchayatId', async (req, res) => {
+// http://localhost:5050/v1/api/grampanchayat/gp-details
+router.get('/gp-details', authenticateGrampanchayat, async (req, res) => {
     try {
-        // Extract the grampanchayatId from the route parameter
-        const { grampanchayatId } = req.params;
-  
-        // Find the Grampanchayat by its `grampanchayatId`
-        const grampanchayat = await Grampanchayat.findOne({ grampanchayatId: grampanchayatId });
-  
+        // Get the authenticated Grampanchayat's ID from the request object
+        const GrampanchayatId = req.user._id;
+
+        // Find the Grampanchayat by its ID
+        const grampanchayat = await Grampanchayat.findById(GrampanchayatId);
+
         // Check if the Grampanchayat is not found
         if (!grampanchayat) {
             return res.status(404).json({
                 success: false,
-                message: `Grampanchayat with ID ${grampanchayatId} not found!`,
+                message: `Grampanchayat not found!`,
             });
         }
-  
+
         // Return the Grampanchayat data in the response
         res.status(200).json({
             success: true,
-            message: `Grampanchayat with ID ${grampanchayatId} found successfully!`,
+            message: `Grampanchayat details fetched successfully!`,
             data: grampanchayat,
         });
     } catch (error) {
-        console.error('Error fetching Grampanchayat by ID:', error);
+        console.error('Error fetching Grampanchayat details:', error);
         res.status(500).json({
             success: false,
-            message: 'An error occurred while fetching the Grampanchayat.',
+            message: 'An error occurred while fetching the Grampanchayat details.',
             error: error.message,
         });
     }
-  });
+});
 
 //list of all Grampanchayat
 // http://localhost:5050/v1/api/grampanchayat/list main
@@ -639,8 +639,8 @@ router.post('/fund-request', authenticateGrampanchayat, async (req, res) => {
 
 
 // Get all fund requests (for PHED)
-// GET http://localhost:5050/v1/api/fund-request
-router.get('/', async (req, res) => {
+// GET http://localhost:5050/v1/api/grampanchayat/fund-request
+router.get('/fund-request', async (req, res) => {
     try {
         const requests = await FundRequest.find().populate('grampanchayatId', 'name');
         res.status(200).json({
