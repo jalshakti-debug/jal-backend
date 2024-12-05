@@ -47,4 +47,4 @@ const inventorySchema = new mongoose.Schema({
 });
 
 // Export the model with the name 'InventoryPhed'
-module.exports = mongoose.model('InventoryPhed', inventorySchema);
+module.exports = mongoose.model('InventoryGp', inventorySchema);
