@@ -8,6 +8,8 @@ const {authenticateGrampanchayat, authenticateUser, authenticatePhedUser} = requ
 const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
 const { AssetContextImpl } = require('twilio/lib/rest/serverless/v1/service/asset');
 const InventoryGp = require('../../models/InventoryGp');
+const UserComplaint = require('../../models/UserComplaint');
+const GramUser = require('../../models/GramUser');
 const router = express.Router();
 //http://localhost:5050/v1/api/grampanchayat/register
 router.post('/register', async (req, res) => {
@@ -175,6 +177,112 @@ router.put('/update/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
+
+
+// http://localhost:5050/v1/api/grampanchayat/user-details/consumerId
+router.get('/user-details/:consumerId', async (req, res) => {
+    try {
+        // Extract the consumerId from the route parameter
+        const { consumerId } = req.params;
+  
+        // Find the User by its `consumerId`
+        const user = await GramUser.findOne({ consumerId: consumerId });
+  
+        // Check if the User is not found
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: `User  with Consumer ID ${consumerId} not found!`,
+            });
+        }
+  
+        // Return the User data in the response
+        res.status(200).json({
+            success: true,
+            message: `User  with Consumer ID ${consumerId} found successfully!`,
+            data: user,
+        });
+    } catch (error) {
+        console.error('Error fetching User by Consumer ID:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching the User.',
+            error: error.message,
+        });
+    }
+  });
+
+
+  
+// Update user info by Gram Panchayat using Consumer ID
+// http://localhost:5050/v1/api/grampanchayat/userUpdate-by-gp/:consumerId
+router.put('/userUpdate-by-gp/:consumerId', authenticateGrampanchayat, async (req, res) => {
+    const { consumerId } = req.params;
+    const { name, address, mobileNo, number_aadhar } = req.body;
+  
+    // Get the GP's ID who is performing the update
+    const gpId = req.gramPanchayatId;
+  
+    try {
+      // Validate that the GP is updating a user in their jurisdiction
+      const userToUpdate = await GramUser.findOne({ consumerId: consumerId });
+      
+      if (!userToUpdate) {
+        return res.status(404).json({ 
+          success: false, 
+          message: `User with Consumer ID ${consumerId} not found.` 
+        });
+      }
+  
+   
+  
+      // Validate that at least one field is being updated
+      if (!name && !address && !mobileNo && !number_aadhar) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'At least one field is required to update.' 
+        });
+      }
+  
+      // Prepare the update object
+      const updateData = {};
+      if (name) updateData.name = name;
+      if (address) updateData.address = address;
+      if (mobileNo) updateData.mobileNo = mobileNo;
+      if (number_aadhar) updateData.number_aadhar = number_aadhar;
+  
+      // Add update metadata
+      updateData.lastUpdatedBy = {
+        gpId: gpId,
+        timestamp: new Date()
+      };
+  
+      // Find the user and update their information
+      const updatedUser = await GramUser.findOneAndUpdate(
+        { consumerId: consumerId }, 
+        updateData, 
+        { 
+          new: true, 
+          runValidators: true 
+        }
+      );
+  
+      // Return the updated user data
+      res.status(200).json({
+        success: true,
+        message: `User information updated successfully for Consumer ID ${consumerId}.`,
+        data: updatedUser,
+      });
+  
+    } catch (error) {
+      console.error('Error updating user information by GP:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error updating user information.',
+        error: error.message,
+      });
+    }
+  });
 
 
 
@@ -394,10 +502,11 @@ router.put('/inventry/updateQuantity', authenticateGrampanchayat, async (req, re
 
 
 // Get inventory for a specific Gram Panchayat
-// http://localhost:5050/v1/api/phed/inventory/:grampanchayatId
-router.get('/inventory/:grampanchayatId',authenticateGrampanchayat, async (req, res) => {
+// http://localhost:5050/v1/api/grampanchayat/inventory/:grampanchayatId
+router.get('/inventory/:grampanchayatId', async (req, res) => {
   try {
-       const grampanchayatId = req.user._id;
+
+       const grampanchayatId = req.params;
 
       // Fetch inventory for the specified Gram Panchayat
       const inventoryItems = await InventoryGp.find({ grampanchayatId });
@@ -425,6 +534,82 @@ router.get('/inventory/:grampanchayatId',authenticateGrampanchayat, async (req, 
       });
   }
 });
+
+
+
+
+
+// Define the route to get all user complaints for a Grampanchayat
+// http://localhost:5050/v1/api/grampanchayat/complaintlist
+router.get('/complaintlist', authenticateGrampanchayat, async (req, res) => {
+    try {
+        const grampanchayatID = req.gramPanchayatId; // Get the authenticated Grampanchayat ID
+
+        // Fetch all complaints associated with the Grampanchayat
+        const complaints = await UserComplaint.find({ grampanchayatID })
+            .populate('consumerId', 'name mobileNo') // Populate user details
+            .populate('grampanchayatId', 'name'); // Populate Grampanchayat details
+
+
+        if (complaints.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No complaints found for this Grampanchayat.',
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Complaints fetched successfully!',
+            data: complaints,
+        });
+    } catch (error) {
+        console.error('Error fetching complaints:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching complaints.',
+            error: error.message,
+        });
+    }
+});
+
+
+
+
+// Register a new complaint
+// POST http://localhost:5050/v1/api/complaint/register
+router.post('/register', async (req, res) => {
+    const { grampanchayatId, description, purpose } = req.body;
+
+    try {
+        // Validate required fields
+        if (!grampanchayatId  || !description || !purpose) {
+            return res.status(400).json({ success: false, message: 'Description and purpose are required.' });
+        }
+
+
+        // Create a new complaint
+        const newComplaint = new Complaint({
+            grampanchayatId,
+            complainNo : complaintId,
+            description,
+            purpose,
+        });
+
+        // Save the complaint to the database
+        const savedComplaint = await newComplaint.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Complaint registered successfully.',
+            data: savedComplaint,
+        });
+    } catch (error) {
+        console.error('Error during complaint registration:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
 
 
 

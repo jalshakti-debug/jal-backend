@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const User = require('./GramUser');
 
 function generateComplaintId() {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
@@ -8,9 +7,8 @@ function generateComplaintId() {
 }
 
 const userComplaintSchema = new Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+    consumerId: { // Change from userId to consumerId
+        type: String, // Assuming consumerId is a string
         required: true,
     },
     complaintId: {
@@ -43,4 +41,5 @@ const userComplaintSchema = new Schema({
     },
 });
 
+// Export the model
 module.exports = mongoose.model('UserComplaint', userComplaintSchema);

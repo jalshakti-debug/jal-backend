@@ -1,10 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const { authenticateGrampanchayat } = require('../../middlewear/auth');
+const { authenticateGrampanchayat, authenticateUser} = require('../../middlewear/auth');
 const GramUser = require('../../models/GramUser');
 const router = express.Router();
 const crypto = require('crypto');
 const generateToken = require('../../middlewear/token')
+
+
 
 
 // Register a new user
@@ -140,6 +142,101 @@ router.post('/login', async (req, res) => {
 });
 
 
+ // user details fetch
+  //http://localhost:5050/v1/api/user/profile
+router.get('/profile', authenticateUser, async (req, res) => {
+  try {
+      const userId = req.user._id; // The user is already added to the request object by the middleware
+      // const user = await User.findById(userId).populate('grampanchayatId'); // Populate the grampanchayatId field
 
+      const user = await GramUser.findById(userId)
+      .populate('grampanchayatId', '-password');
+
+      if (!user) {
+          return res.status(404).json({
+              success: false,
+              message: 'User not found',
+          });
+      }
+
+      // Return the user details along with the Grampanchayat details
+      res.status(200).json({
+          success: true,
+          message: 'User profile fetched successfully',
+          data: {
+              user: {
+                  _id: user._id,
+                  name: user.name,
+                  address: user.address,
+                  number_aadhar: user.number_aadhar,
+                  mobileNo: user.mobileNo,
+                  consumerId: user.consumerId,
+                  status: user.status,
+                  createdAt: user.createdAt,
+                  updatedAt: user.updatedAt,
+              },
+          },
+      });
+  } catch (error) {
+      console.error('Error fetching user profile:', error);
+      res.status(500).json({
+          success: false,
+          message: 'An error occurred while fetching user profile',
+          error: error.message,
+      });
+  }
+});
+
+
+
+
+// User can add complain
+  //http://localhost:5050/v1/api/user/usercomplaint
+  router.post('/usercomplaint', authenticateUser , async (req, res) => {
+    try {
+        const {complaintId, complaintDetails, status } = req.body;
+  
+        // Check if the complaint details are provided
+        if (!complaintDetails) {
+            return res.status(400).json({
+                success: false,
+                message: 'Complaint details are required.',
+            });
+        }
+  
+        // Get the consumerId from the authenticated user
+        const consumerId = req.user.consumerId; // Use consumerId instead of userId
+        const grampanchayatId = req.user.grampanchayatId; // Get the Grampanchayat ID from the authenticated user
+  
+        // Prepare the data for the new UserComplaint record
+        const userComplaintData = {
+            consumerId, // Use consumerId instead of userId
+            complaintDetails,
+            status: status || 'Pending', // Default status is 'Pending'
+            grampanchayatId, // Link the complaint to the user's Grampanchayat
+            complaintId,
+        };
+  
+        // Create a new UserComplaint instance
+        const newUserComplaint = new UserComplaint(userComplaintData);
+  
+        // Save the new complaint
+        const savedUserComplaint = await newUserComplaint.save();
+  
+        // Return the response
+        res.status(201).json({
+            success: true,
+            message: 'User  complaint created successfully!',
+            data: savedUserComplaint,
+        });
+    } catch (error) {
+        console.error('Error creating user complaint:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while creating the user complaint.',
+            error: error.message,
+        });
+    }
+  });
 
 module.exports = router;
