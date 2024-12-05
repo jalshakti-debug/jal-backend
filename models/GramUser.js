@@ -4,9 +4,8 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   address: { 
-    houseNo: { type: String, required: true },
-    city: { type: String, required: true },
-    pincode: { type: String, required: true }
+    type: String,
+    required: true,
   },
   mobileNo: { type: String, required: true, unique: true },
   number_aadhar: { type: String, required: true },

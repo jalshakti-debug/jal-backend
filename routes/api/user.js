@@ -17,8 +17,8 @@ router.post('/register', authenticateGrampanchayat, async (req, res) => {
 
     try {
         // Validate required fields
-        if (!name || !address || !address.houseNo || !address.city || !address.pincode || !mobileNo || !number_aadhar) {
-            return res.status(400).json({ success: false, message: 'Name, address (houseNo, city, pincode), mobile number, and Aadhar number are required.' });
+        if (!name || !address || !mobileNo || !number_aadhar) {
+            return res.status(400).json({ success: false, message: 'Name, address , mobile number, and Aadhar number are required.' });
         }
 
         // Check if user already exists with mobile number or Aadhar

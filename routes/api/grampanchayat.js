@@ -9,7 +9,9 @@ const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
 const { AssetContextImpl } = require('twilio/lib/rest/serverless/v1/service/asset');
 const InventoryGp = require('../../models/InventoryGp');
 const UserComplaint = require('../../models/UserComplaint');
+const Complaint = require('../../models/Complaint');
 const GramUser = require('../../models/GramUser');
+const FundRequest = require('../../models/FundRequest');
 const router = express.Router();
 //http://localhost:5050/v1/api/grampanchayat/register
 router.post('/register', async (req, res) => {
@@ -576,6 +578,46 @@ router.get('/complaintlist', authenticateGrampanchayat, async (req, res) => {
 
 
 
+// Create a new fund request
+// POST http://localhost:5050/v1/api/fund-request
+router.post('/', authenticateGrampanchayat, async (req, res) => {
+    const { amountRequested, purpose } = req.body;
+    const grampanchayatId = req.user._id; // Get the Grampanchayat ID from the authenticated user
+
+    try {
+        const newRequest = new FundRequest({
+            grampanchayatId,
+            amountRequested,
+            purpose,
+        });
+
+        const savedRequest = await newRequest.save();
+        res.status(201).json({
+            success: true,
+            message: 'Fund request created successfully.',
+            data: savedRequest,
+        });
+    } catch (error) {
+        console.error('Error creating fund request:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// Get all fund requests (for PHED)
+// GET http://localhost:5050/v1/api/fund-request
+router.get('/', async (req, res) => {
+    try {
+        const requests = await FundRequest.find().populate('grampanchayatId', 'name');
+        res.status(200).json({
+            success: true,
+            message: 'Fund requests retrieved successfully.',
+            data: requests,
+        });
+    } catch (error) {
+        console.error('Error fetching fund requests:', error);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
 
 
 
