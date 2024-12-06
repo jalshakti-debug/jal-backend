@@ -743,14 +743,15 @@ router.get('/announcements',authenticateGrampanchayat , async (req, res) => {
 
 
 // http://localhost:5050/v1/api/grampanchayat/worker/register
-router.post('/worker/register', async (req, res) => {
-    const { name, mobile, jobTitle, grampanchayatId } = req.body;
+router.post('/worker/register', authenticateGrampanchayat, async (req, res) => {
+    const { name, mobile, password, jobTitle} = req.body;
+    const grampanchayatId = req.user._id;
 
     // Basic validations
-    if (!name || !mobile || !jobTitle || !grampanchayatId) {
+    if (!name || !mobile || !password || !jobTitle || !grampanchayatId) {
         return res.status(400).json({
             success: false,
-            message: 'Name, mobile, job title, and Grampanchayat ID are required.',
+            message: 'Name, mobile, password and job title are required.',
         });
     }
 
@@ -763,7 +764,7 @@ router.post('/worker/register', async (req, res) => {
 
     try {
         // Check if the worker already exists
-        const existingWorker = await Worker.findOne({ mobile });
+        const existingWorker = await Worker.findOne({ mobile});
 
         if (existingWorker) {
             return res.status(400).json({
@@ -776,6 +777,7 @@ router.post('/worker/register', async (req, res) => {
         const newWorker = new Worker({
             name,
             mobile,
+            password,
             jobTitle,
             grampanchayatId,
         });
@@ -798,6 +800,65 @@ router.post('/worker/register', async (req, res) => {
     }
 });
 
+
+// Worker Login Route
+// http://localhost:5050/v1/api/grampanchayat/worker/login
+router.post('/worker/login', async (req, res) => {
+    const { mobile, password } = req.body;
+
+    // Validate input fields
+    if (!mobile || !password) {
+        return res.status(400).json({
+            success: false,
+            message: 'Mobile number and password are required.',
+        });
+    }
+
+    try {
+        // Find the worker by mobile number
+        const worker = await Worker.findOne({ mobile });
+
+        if (!worker) {
+            return res.status(404).json({
+                success: false,
+                message: 'Worker not found. Please check your credentials.',
+            });
+        }
+
+        // Compare the provided password with the stored password
+        
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid password. Please try again.',
+            });
+        }
+
+        // Generate a JWT token (if needed)
+        const token = generateToken(worker._id, 'worker'); // Assuming you have a function to generate tokens
+
+        // Respond with success and the token
+        res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            token: token,  // Send the token to the client
+            worker: {
+                _id: worker._id,
+                name: worker.name,
+                mobile: worker.mobile,
+                jobTitle: worker.jobTitle,
+                grampanchayatId: worker.grampanchayatId,
+            },
+        });
+    } catch (error) {
+        console.error('Error during worker login:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred during login',
+            error: error.message,
+        });
+    }
+});
 
 // http://localhost:5050/v1/api/grampanchayat/workers/674cb0379b6f886bf571f334
 router.get('/workers/:grampanchayatId', async (req, res) => {
@@ -837,6 +898,8 @@ router.get('/workers/:grampanchayatId', async (req, res) => {
 });
 
 
+// fetch all workers
+// http://localhost:5050/v1/api/grampanchayat/workers
 router.get('/workers', async (req, res) => {
     try {
         // Fetch all workers from the database

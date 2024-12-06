@@ -17,6 +17,10 @@ const workerSchema = new mongoose.Schema({
       message: (props) => `${props.value} is not a valid mobile number!`,
     },
   },
+  password: {
+    type: String,
+    required: true
+  },
   jobTitle: {
     type: String,
     required: true,
