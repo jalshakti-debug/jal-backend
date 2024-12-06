@@ -458,6 +458,41 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
           select: 'villageName city district state pincode', // Select the required fields
       });
 
+      let assetGP = await AssetGp.findOne({ name: assetName, grampanchayatId: gramPanchayatId });
+      // If asset doesn't exist, create it
+      let previousQuantity = 0;
+      if (!assetGP) {
+        let assetNEWGP = new AssetGp({
+          name: assetName,
+          grampanchayatId: gramPanchayat._id,
+          quantity: quantity,
+          editHistory: [{
+            date: new Date(),
+            quantityAdded: req.body.quantity,
+            updatedQuantity: 0,
+            description: description || 'N/A',
+            creditOrDebit: 'credit',
+        }],
+        });
+        await assetNEWGP.save();
+
+      }else{
+        // Update the quantity and add edit history
+        const quantityToAdd = Number(quantity) || 0;
+        assetGP.name = assetName;
+        assetGP.quantity = previousQuantity + quantityToAdd;
+        assetGP.editHistory.push({
+            date: new Date(),
+            quantityAdded: quantityToAdd,
+            updatedQuantity: assetGP.quantity,
+            description: description || 'N/A',
+            creditOrDebit: 'credit',
+        });
+        await assetGP.save();
+      }
+
+      // Save the asset
+
       // Respond with success
       res.status(200).json({
           success: true,

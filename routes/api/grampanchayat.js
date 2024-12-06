@@ -11,6 +11,7 @@ const InventoryGp = require('../../models/InventoryGp');
 const UserComplaint = require('../../models/UserComplaint');
 const Complaint = require('../../models/Complaint');
 const GramUser = require('../../models/GramUser');
+const Worker = require('../../models/Worker');
 const FundRequest = require('../../models/FundRequest');
 const Announcement = require('../../models/Announcement'); // Import the Announcement model
 const router = express.Router();
@@ -739,6 +740,131 @@ router.get('/announcements',authenticateGrampanchayat , async (req, res) => {
     }
   });
 
+
+
+// http://localhost:5050/v1/api/grampanchayat/worker/register
+router.post('/worker/register', async (req, res) => {
+    const { name, mobile, jobTitle, grampanchayatId } = req.body;
+
+    // Basic validations
+    if (!name || !mobile || !jobTitle || !grampanchayatId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Name, mobile, job title, and Grampanchayat ID are required.',
+        });
+    }
+
+    if (!/^\d{10}$/.test(mobile)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Mobile number must be 10 digits.',
+        });
+    }
+
+    try {
+        // Check if the worker already exists
+        const existingWorker = await Worker.findOne({ mobile });
+
+        if (existingWorker) {
+            return res.status(400).json({
+                success: false,
+                message: 'Worker with this mobile number already exists.',
+            });
+        }
+
+        // Create a new worker
+        const newWorker = new Worker({
+            name,
+            mobile,
+            jobTitle,
+            grampanchayatId,
+        });
+
+        // Save the worker in the database
+        await newWorker.save();
+
+        return res.status(201).json({
+            success: true,
+            message: 'Worker registered successfully.',
+            worker: newWorker,
+        });
+    } catch (error) {
+        console.error('Error registering worker:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message,
+        });
+    }
+});
+
+
+// http://localhost:5050/v1/api/grampanchayat/workers/674cb0379b6f886bf571f334
+router.get('/workers/:grampanchayatId', async (req, res) => {
+    const { grampanchayatId } = req.params; // Extract grampanchayatId from route params
+
+    // Validate grampanchayatId
+    if (!grampanchayatId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Grampanchayat ID is required.',
+        });
+    }
+    try {
+        // Find all workers under the specified grampanchayatId
+        const workers = await Worker.find({ grampanchayatId });
+
+        if (!workers || workers.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No workers found for the specified Grampanchayat ID.',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Workers retrieved successfully.',
+            workers,
+        });
+    } catch (error) {
+        console.error('Error fetching workers:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message,
+        });
+    }
+});
+
+
+router.get('/workers', async (req, res) => {
+    try {
+        // Fetch all workers from the database
+        const workers = await Worker.find().populate('grampanchayatId', 'name pincode address mobile city  '); 
+
+        // Check if workers exist
+        if (!workers || workers.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No workers found.',
+            });
+        }
+
+        // Return success response with workers data
+        return res.status(200).json({
+            success: true,
+            message: 'Workers retrieved successfully.',
+            workers,
+        });
+    } catch (error) {
+        console.error('Error fetching workers:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error.',
+            error: error.message,
+        });
+    }
+});
 
 
 module.exports = router;
