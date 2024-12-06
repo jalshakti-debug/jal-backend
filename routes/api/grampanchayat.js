@@ -701,20 +701,22 @@ router.put('/accept/:id', async (req, res) => {
 // GET http://localhost:5050/v1/api/grampanchayat/announcements
 router.get('/announcements',authenticateGrampanchayat , async (req, res) => {
     
+   
     const GrampanchayatId = req.user._id;
-    try {
-        
     const grampanchayat = await Grampanchayat.findById(GrampanchayatId);
+    
+   
 
     if (!grampanchayat) {
       return res.status(400).json({ success: false, message: 'Grampanchayat ID is required' });
     }
-  
+    try {
     
-      const announcements = await Announcement.find({ grampanchayat })
+      const announcements = await Announcement.find({grampanchayatId:  GrampanchayatId })
         .populate('receiver', 'name grampanchayatId pincode address')
         .sort({ createdAt: -1 });
   
+        console.log(announcements)
       if (announcements.length === 0) {
         return res.status(404).json({
           success: false,

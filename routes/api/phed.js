@@ -276,7 +276,7 @@ router.get('/listAssets', async (req, res) => {
       error: error.message,
     });
   }
-});;
+});
 
 //---------------------------------------
 
@@ -754,7 +754,7 @@ router.post('/announcements/:grampanchayatId', async (req, res) => {
     // Create the announcement with the received data
     const announcement = new Announcement({
       message,
-      grampanchayatId,
+      grampanchayatId : grampanchayat._id ,
       receiver: grampanchayat._id, // Set the receiver field to Grampanchayat's ObjectId
     });
 
