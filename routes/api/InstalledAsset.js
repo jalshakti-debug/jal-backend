@@ -1,12 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const InstalledAsset = require('../models/InstalledAsset');
+const InstalledAsset = require('../../models/InstalledAsset');
+const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
+const { authenticateGrampanchayat } = require('../../middlewear/auth');
 
 // installed asset
-router.post('/installed-assets', async (req, res) => {
+router.post('/', authenticateGrampanchayat, async (req, res) => {
     try {
+
         const newAsset = new InstalledAsset(req.body);
         const savedAsset = await newAsset.save();
+
+        let assetGP = await AssetGp.findOne({ name: req.body.assetsType, grampanchayatId: req.body.grampanchayatId });
+        if(assetGP){
+            assetGP.name = assetName;
+            assetGP.quantity = assetGP.quantity - 1;
+            assetGP.editHistory.push({
+                date: new Date(),
+                quantityAdded: quantityToAdd,
+                updatedQuantity: assetGP.quantity,
+                description: description || 'N/A',
+                creditOrDebit: 'credit',
+            });
+            await assetGP.save(); 
+        }
         res.status(201).json({
             success: true,
             message: 'Installed asset created successfully.',
@@ -23,7 +40,7 @@ router.post('/installed-assets', async (req, res) => {
 });
 
 // update installed assets
-router.put('/installed-assets/:id', async (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
         const updatedAsset = await InstalledAsset.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
@@ -49,7 +66,7 @@ router.put('/installed-assets/:id', async (req, res) => {
 });
 
 // get by Grampanchayat
-router.get('/installed-assets/by-grampanchayat/:grampanchayatId', async (req, res) => {
+router.get('/by-grampanchayat/:grampanchayatId', async (req, res) => {
     try {
         const assets = await InstalledAsset.find({ grampanchayatId: req.params.grampanchayatId });
         res.status(200).json({
@@ -67,7 +84,7 @@ router.get('/installed-assets/by-grampanchayat/:grampanchayatId', async (req, re
 });
 
 // get installed assets package
-router.get('/installed-assets/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
         const asset = await InstalledAsset.findById(req.params.id);
         if (!asset) {
@@ -91,7 +108,7 @@ router.get('/installed-assets/:id', async (req, res) => {
 });
 
 // delete installed assets
-router.delete('/installed-assets/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
         const deletedAsset = await InstalledAsset.findByIdAndDelete(req.params.id);
         if (!deletedAsset) {

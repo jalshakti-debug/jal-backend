@@ -17,5 +17,6 @@ dbConn();
 app.use("/v1/api/phed", require('./routes/api/phed'));
 app.use("/v1/api/grampanchayat", require('./routes/api/grampanchayat'));
 app.use("/v1/api/user", require('./routes/api/user'));
+app.use("/v1/api/installed-assets", require('./routes/api/InstalledAsset'));
 
 

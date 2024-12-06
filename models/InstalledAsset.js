@@ -10,19 +10,20 @@ const InstalledAssetSchema = new mongoose.Schema({
         required: true 
     },
     grampanchayatId: {
-         type: String,
-        required: true 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Grampanchayat', 
+        required: true ,
     },
     latitude: {
-         type: Number,
+        type: Number,
         required: true 
     },
     longitude: {
-         type: Number,
+        type: Number,
         required: true 
     },
     workerId: {
-         type: String,
+        type: mongoose.Schema.Types.ObjectId, 
         required: true 
     },
     assetsIdentificationId: {
