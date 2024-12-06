@@ -24,6 +24,7 @@ const InstalledAssetSchema = new mongoose.Schema({
     },
     workerId: {
         type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Worker', 
         required: true 
     },
     assetsIdentificationId: {

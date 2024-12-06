@@ -68,7 +68,7 @@ router.put('/:id', async (req, res) => {
 // get by Grampanchayat
 router.get('/by-grampanchayat/:grampanchayatId', async (req, res) => {
     try {
-        const assets = await InstalledAsset.find({ grampanchayatId: req.params.grampanchayatId });
+        const assets = await InstalledAsset.find({ grampanchayatId: req.params.grampanchayatId }).populate('Workers');
         res.status(200).json({
             success: true,
             message: 'Installed assets fetched successfully.',
