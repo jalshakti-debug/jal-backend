@@ -779,41 +779,6 @@ router.post('/announcements/:grampanchayatId', async (req, res) => {
 });
 
 
-// Get All Announcements by GrampanchayatId
-// GET http://localhost:5050/v1/api/phed/announcements/:grampanchayatId
-router.get('/announcements/:grampanchayatId', async (req, res) => {
-  const { grampanchayatId } = req.params;
-
-  if (!grampanchayatId) {
-    return res.status(400).json({ success: false, message: 'Grampanchayat ID is required' });
-  }
-
-  try {
-    const announcements = await Announcement.find({ grampanchayatId })
-      .populate('receiver', 'name grampanchayatId pincode address')
-      .sort({ createdAt: -1 });
-
-    if (announcements.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'No announcements found for this Grampanchayat',
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      announcements,
-    });
-
-  } catch (error) {
-    console.error('Error fetching announcements:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
-  }
-});
 
 
 

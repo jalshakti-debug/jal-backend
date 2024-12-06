@@ -12,6 +12,7 @@ const UserComplaint = require('../../models/UserComplaint');
 const Complaint = require('../../models/Complaint');
 const GramUser = require('../../models/GramUser');
 const FundRequest = require('../../models/FundRequest');
+const Announcement = require('../../models/Announcement'); // Import the Announcement model
 const router = express.Router();
 //http://localhost:5050/v1/api/grampanchayat/register
 router.post('/register', async (req, res) => {
@@ -655,6 +656,86 @@ router.get('/fund-request', async (req, res) => {
 });
 
 
+
+// Accept a fund request
+// PUT http://localhost:5050/v1/api/fund-request/accept/:id
+// Accept a fund request
+router.put('/accept/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const request = await FundRequest.findById(id);
+        if (!request) {
+            return res.status(404).json({ success: false, message: 'Fund request not found.' });
+        }
+
+        // Update the status to 'Accepted'
+        request.status = 'Accepted';
+        await request.save();
+
+        // Create a cash book entry
+        const CashBook = require('../../models/CashBook');
+        const cashEntry = new CashBook({
+            fundRequestId: request._id,
+            amount: request.amountRequested,
+            description: `Fund request accepted for ${request.purpose}`,
+        });
+        await cashEntry.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Fund request accepted and cash book entry created successfully.',
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while accepting the fund request.',
+            error: error.message,
+        });
+    }
+});
+
+
+
+// Get All Announcements by GrampanchayatId
+// GET http://localhost:5050/v1/api/grampanchayat/announcements
+router.get('/announcements',authenticateGrampanchayat , async (req, res) => {
+    
+    const GrampanchayatId = req.user._id;
+    try {
+        
+    const grampanchayat = await Grampanchayat.findById(GrampanchayatId);
+
+    if (!grampanchayat) {
+      return res.status(400).json({ success: false, message: 'Grampanchayat ID is required' });
+    }
+  
+    
+      const announcements = await Announcement.find({ grampanchayat })
+        .populate('receiver', 'name grampanchayatId pincode address')
+        .sort({ createdAt: -1 });
+  
+      if (announcements.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'No announcements found for this Grampanchayat',
+        });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        announcements,
+      });
+  
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message,
+      });
+    }
+  });
 
 
 
