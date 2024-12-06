@@ -112,14 +112,23 @@ router.get('/detail', async (req, res) => {
 
 
 
-/// http://localhost:5050/v1/api/phed/gp-details/grampanchayatId
+// Route to get Grampanchayat details by ObjectId
+// http://localhost:5050/v1/api/phed/gp-details/:grampanchayatId
 router.get('/gp-details/:grampanchayatId', async (req, res) => {
   try {
       // Extract the grampanchayatId from the route parameter
       const { grampanchayatId } = req.params;
 
-      // Find the Grampanchayat by its `grampanchayatId`
-      const grampanchayat = await Grampanchayat.findOne({ grampanchayatId: grampanchayatId });
+      // Validate ObjectId
+      if (!mongoose.Types.ObjectId.isValid(grampanchayatId)) {
+          return res.status(400).json({
+              success: false,
+              message: 'Invalid Grampanchayat ID.',
+          });
+      }
+
+      // Find the Grampanchayat by its ObjectId
+      const grampanchayat = await Grampanchayat.findById(grampanchayatId);
 
       // Check if the Grampanchayat is not found
       if (!grampanchayat) {
@@ -144,6 +153,7 @@ router.get('/gp-details/:grampanchayatId', async (req, res) => {
       });
   }
 });
+
 
 // //---------------------------------------
 
