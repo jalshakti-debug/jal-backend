@@ -15,6 +15,7 @@ const Worker = require('../../models/Worker');
 const FundRequest = require('../../models/FundRequest');
 const Announcement = require('../../models/Announcement'); // Import the Announcement model
 const router = express.Router();
+const Alert = require('../../models/Alert'); // Import the Alert model
 //http://localhost:5050/v1/api/grampanchayat/register
 router.post('/register', async (req, res) => {
     const { name, grampanchayatId, address, villageName, city, district, state, pincode, mobile, password} = req.body;
@@ -928,5 +929,101 @@ router.get('/workers', async (req, res) => {
     }
 });
 
+// http://localhost:5050/v1/api/grampanchayat/alert/send
+router.post('/alert/send', async (req, res) => {
+    try {
+      const { grampanchayatId, message } = req.body;
+  
+      // Validate input
+      if (!grampanchayatId || !message) {
+        return res.status(400).json({ success: false, message: 'Grampanchayat ID and message are required.' });
+      }
+  
+      // Check if the Grampanchayat exists
+      const grampanchayat = await Grampanchayat.findById(grampanchayatId);
+      if (!grampanchayat) {
+        return res.status(404).json({ success: false, message: 'Grampanchayat not found.' });
+      }
+  
+      // Create the alert
+      const alert = new Alert({
+        message,
+        grampanchayat: grampanchayat._id,
+      });
+  
+      // Save the alert
+      const savedAlert = await alert.save();
+  
+      res.status(201).json({
+        success: true,
+        message: 'Alert sent successfully.',
+        data: savedAlert,
+      });
+    } catch (error) {
+      console.error('Error sending alert:', error);
+      res.status(500).json({ success: false, message: 'Internal Server Error.' });
+    }
+  });
+router.patch('/alert/acknowledge/:alertId', async (req, res) => {
+    try {
+      const { alertId } = req.params;
+      const { status } = req.body; // Status to be updated, sent in the request body
+  
+      // Validate the status
+      if (typeof status !== 'number' || ![0, 1].includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status. Status must be 0 (Pending) or 1 (Acknowledged).',
+        });
+      }
+  
+      // Find the alert
+      const alert = await Alert.findById(alertId);
+      if (!alert) {
+        return res.status(404).json({ success: false, message: 'Alert not found.' });
+      }
+  
+      // Update the status
+      alert.status = status;
+      const updatedAlert = await alert.save();
+  
+      res.status(200).json({
+        success: true,
+        message: `Alert status updated to ${status === 1 ? 'Acknowledged' : 'Pending'} successfully.`,
+        data: updatedAlert,
+      });
+    } catch (error) {
+      console.error('Error updating alert status:', error);
+      res.status(500).json({ success: false, message: 'Internal Server Error.' });
+    }
+});
+  
+router.get('/alerts', async (req, res) => {
+    try {
+      // Fetch all alerts and populate Grampanchayat details
+      const alerts = await Alert.find().populate('grampanchayat', 'name villageName city');
+  
+      // Check if alerts exist
+      if (!alerts.length) {
+        return res.status(404).json({
+          success: true,
+          message: 'No alerts found.',
+          data: [],
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Alerts fetched successfully.',
+        data: alerts,
+      });
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      res.status(500).json({ success: false, message: 'Internal Server Error.' });
+    }
+  });
+    
 
+
+  
 module.exports = router;
