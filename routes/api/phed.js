@@ -642,7 +642,7 @@ router.get('/get-assets-by-gram/:gramPanchayatId', async (req, res) => {
 
 
 // API to get inventory distribution information for a specific Gram Panchayat by ID
-// http://localhost:5050/v1/api/phed//inventory/give-to-gram/:gramPanchayatId
+// http://localhost:5050/v1/api/phed/inventory/give-to-gram/:gramPanchayatId
 router.post('/inventory/give-to-gram/:gramPanchayatId', async (req, res) => {
   const { gramPanchayatId } = req.params;
   const { inventoryName, quantity, description, date } = req.body;
