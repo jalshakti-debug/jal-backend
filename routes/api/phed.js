@@ -193,7 +193,7 @@ router.get('/gp-details/:grampanchayatId', async (req, res) => {
 
 
 // Add a new asset
-// http://localhost:5050/v1/api/phed/addAsset
+//      
 router.post('/addAsset', async (req, res) => {
   try {
     const { name, quantity, description, date } = req.body;
@@ -433,7 +433,7 @@ router.get('/inventry/list', async (req, res) => {
 // http://localhost:5050/v1/api/phed/asset/give-to-gram/:gramPanchayatId
 router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
   const { gramPanchayatId } = req.params;
-  const { assetName, quantity, description, date } = req.body;
+  const { assetName, quantity, description, date  } = req.body;
 
   try {
     // Validate input
@@ -552,6 +552,7 @@ router.get('/get-assets-by-gram/:gramPanchayatId', async (req, res) => {
       currentQuantity: asset.quantity,
       editHistory: asset.editHistory.map(entry => ({
         date: entry.date,
+        creditOrDebit: entry.creditOrDebit,
         quantityAdded: entry.quantityAdded,
         updatedQuantity: entry.updatedQuantity,
         description: entry.description,

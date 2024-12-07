@@ -9,6 +9,7 @@ const gpAssetSchema = new mongoose.Schema({
       date: { type: Date, default: Date.now }, // Date of edit
       quantityAdded: Number, // Quantity added or modified
       updatedQuantity: Number, // Quantity after the edit
+      creditOrDebit: { type: String, enum: ['credit', 'debit'] },
       description: { type: String, required: true }, // Description of the change
     },
   ],
