@@ -12,7 +12,7 @@ const InventoryGp = require('../../models/Inventry')
 const Grampanchayat = require('../../models/Grampanchayat');
 const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
 const {authenticateGrampanchayat, authenticateUser, authenticatePhedUser} = require('../../middlewear/auth');
-const Announcement = require('../../models/Announcement'); // Import the Announcement model
+const Announcement = require('../../models/Announcement');
 //---------------------------------------
 
 /**
@@ -779,63 +779,114 @@ router.get('/inventory/:grampanchayatId', async (req, res) => {
   }
 });
 
-// Create Announcement
-// http://localhost:5050/v1/api/phed/announcements/:grampanchayatId
-router.post('/announcements/:grampanchayatId', async (req, res) => {
-  const { message } = req.body;
-  const { grampanchayatId } = req.params; // Get grampanchayatId from the route params
-  // Basic validation for message 
-  if (!message ) {
-    return res.status(400).json({ success: false, message: 'Message is required' });
-  }
 
-  if (!grampanchayatId ) {
-    return res.status(400).json({ success: false, message: 'Grampanchayat ID is required' });
-  }
-
+// POST API to send an announcement to a specific Grampanchayat by _id (from params)
+//http://localhost:5050/v1/api/phed/announcements/67540400abcf60aeba862bf1
+router.post('/announcements/:receiver', async (req, res) => {
   try {
-    // Debug log: Check what grampanchayatId is being passed
-    console.log('Received grampanchayatId:', grampanchayatId);
+    const { receiver } = req.params; // Get receiver (Grampanchayat _id) from URL params
+    const { message } = req.body; // Get message from the request body
 
-    // Check if Grampanchayat exists using the provided grampanchayatId
-    const grampanchayat = await Grampanchayat.findOne({ _id: grampanchayatId });
-
-    // Debug log: Output if Grampanchayat is found or not
-    if (!grampanchayat) {
-      console.log('Grampanchayat not found:', grampanchayatId);
-      return res.status(404).json({ success: false, message: 'Grampanchayat not found' });
+    // Validate request data
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required.' });
     }
 
-    // Create the announcement with the received data
+    // Validate the receiver (Grampanchayat) ID format
+    if (!mongoose.Types.ObjectId.isValid(receiver)) {
+      return res.status(400).json({ error: 'Invalid Grampanchayat ID format' });
+    }
+
+    // Check if Grampanchayat with the provided _id exists
+    const grampanchayat = await Grampanchayat.findById(receiver);
+    if (!grampanchayat) {
+      return res.status(404).json({ error: 'Grampanchayat not found.' });
+    }
+
+    // Create and save the announcement
     const announcement = new Announcement({
       message,
-      grampanchayatId : grampanchayat._id ,
-      receiver: grampanchayat._id, // Set the receiver field to Grampanchayat's ObjectId
+      receiver,
     });
 
-    // Save the announcement to the database
-    await announcement.save();
+    const savedAnnouncement = await announcement.save();
 
-    // Return success response
-    return res.status(201).json({
-      success: true,
-      message: 'Announcement sent successfully',
-      announcement,
+    res.status(201).json({
+      message: 'Announcement sent successfully to Grampanchayat.',
+      data: savedAnnouncement,
     });
-
   } catch (error) {
     console.error('Error sending announcement:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: error.message,
-    });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
+// GET API to fetch all announcements for a specific Grampanchayat based on receiver (Grampanchayat _id)
+// http://localhost:5050/v1/api/phed/announcements/67540400abcf60aeba862bf1
+router.get('/announcements/:receiver', async (req, res) => {
+  try {
+    const { receiver } = req.params; // Get receiver (Grampanchayat _id) from URL params
 
+    // Validate the receiver ID is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(receiver)) {
+      return res.status(400).json({ error: 'Invalid Grampanchayat ID.' });
+    }
 
+    // Check if Grampanchayat exists with the provided _id
+    const grampanchayat = await Grampanchayat.findById(receiver);
+    if (!grampanchayat) {
+      return res.status(404).json({ error: 'Grampanchayat not found.' });
+    }
 
+    // Find all announcements that are associated with the Grampanchayat's _id as receiver
+    const announcements = await Announcement.find({ receiver })
+    .populate('receiver', 'name grampanchayatId villageName city   mobile');
 
+    // If no announcements are found
+    if (announcements.length === 0) {
+      return res.status(404).json({ error: 'No announcements found for this Grampanchayat.' });
+    }
+
+    // Return the list of announcements
+    res.status(200).json({
+      message: 'Announcements fetched successfully.',
+      data: announcements,
+    });
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET API to fetch all announcements
+//http://localhost:5050/v1/api/phed/announcements
+router.get('/announcements', async (req, res) => {
+  try {
+    // Fetch all announcements from the database
+    const announcements = await Announcement.find()
+    .populate('receiver', 'name grampanchayatId villageName city   mobile');
+
+    // If no announcements are found
+    if (announcements.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No announcements found.',
+      });
+    }
+
+    // Return the list of announcements with success flag
+    res.status(200).json({
+      success: true,
+      message: 'Announcements fetched successfully.',
+      data: announcements,
+    });
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal Server Error',
+    });
+  }
+});
 
 module.exports = router;
