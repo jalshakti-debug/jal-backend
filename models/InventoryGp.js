@@ -10,9 +10,11 @@ const inventorySchema = new mongoose.Schema({
   }, // Inventory item name
   category: { 
     type: String, 
-    required: true, 
-    trim: true // Ensures no trailing spaces
-  }, // Inventory category (e.g., "Chemicals", "Pipes", etc.)
+    required: false, 
+    // INFO: These we are using for setting notification to frontend for the future app
+    enum: ["Chemical", "Water Safety Kits", "Spare Part", "Filters"],
+    // trim: true, // Ensures no trailing spaces
+  },
   quantity: { 
     type: Number, 
     default: 0, 
@@ -45,6 +47,7 @@ const inventorySchema = new mongoose.Schema({
 }, { 
   timestamps: true // Automatically manages createdAt and updatedAt fields
 });
+
 
 // Export the model with the name 'InventoryPhed'
 module.exports = mongoose.model('InventoryPHED', inventorySchema);
