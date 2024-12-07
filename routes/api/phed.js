@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const generateToken = require('../../middlewear/token')
 const router = express.Router();
 const InventoryPhed = require('../../models/InventoryGp')
+const InventoryGp = require('../../models/Inventry')
 const Grampanchayat = require('../../models/Grampanchayat');
 const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
 const {authenticateGrampanchayat, authenticateUser, authenticatePhedUser} = require('../../middlewear/auth');
@@ -312,13 +313,21 @@ router.get('/listAssets', async (req, res) => {
 
 //---------------------------------------
 
-// Add a new asset
-// http://localhost:5050/v1/api/phed/addInventry
-router.post('/addInventry', async (req, res) => {
+// Add a new inventory
+// http://localhost:5050/v1/api/phed/addInventory
+router.post('/addInventory', async (req, res) => {
   const { name, category, quantity, description } = req.body;
 
   try {
-    // Check if inventory item already exists
+    // Validate input
+    if (!name || !category || !quantity || !description) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, category, quantity, and description are required.',
+      });
+    }
+
+    // Check if the inventory item already exists
     const existingItem = await InventoryPhed.findOne({ name });
     if (existingItem) {
       return res.status(400).json({
@@ -327,30 +336,33 @@ router.post('/addInventry', async (req, res) => {
       });
     }
 
-    // Create the new inventory item
-    const inventory = new InventoryPhed({
+    // Create a new inventory item
+    const newInventory = new InventoryPhed({
       name,
-      category, // Save category
+      category,
       quantity,
       editHistory: [
         {
+          date: new Date(),
           quantityAdded: quantity,
           updatedQuantity: quantity,
           description,
-          creditOrDebit: 'credit', // Transaction is a debit (decrease in quantity)
-
+          creditOrDebit: 'credit',
         },
       ],
     });
 
-    await inventory.save();
+    // Save the new inventory item
+    await newInventory.save();
 
+    // Respond with the created inventory
     res.status(201).json({
       success: true,
       message: 'Inventory item added successfully.',
-      data: inventory, // Send the entire inventory item in response
+      data: newInventory,
     });
   } catch (error) {
+    console.error('Error adding inventory:', error);
     res.status(500).json({
       success: false,
       message: 'Error adding inventory.',
@@ -360,40 +372,69 @@ router.post('/addInventry', async (req, res) => {
 });
 
 // Update inventory quantity
-// http://localhost:5050/v1/api/phed/inventry/updateQuantity
-router.put('/inventry/updateQuantity', async (req, res) => {
+// Update inventory quantity
+// http://localhost:5050/v1/api/phed/inventory/updateQuantity
+router.put('/inventory/updateQuantity', async (req, res) => {
   const { name, quantityToAdd, description } = req.body;
 
   try {
-    if (!name || quantityToAdd === undefined || !description) {
-      return res.status(400).json({ success: false, message: 'Name, quantity to add, and description are required.' });
+    // Validate input
+    if (!name || quantityToAdd === undefined || typeof quantityToAdd !== 'number' || !description) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Name, quantity to add (as a number), and description are required.' 
+      });
     }
 
+    // Find the inventory item by name
     const inventory = await InventoryPhed.findOne({ name });
     if (!inventory) {
-      return res.status(404).json({ success: false, message: 'Inventory item not found.' });
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Inventory item not found.' 
+      });
     }
 
+    // Update the inventory quantity
     const updatedQuantity = inventory.quantity + quantityToAdd;
 
+    if (updatedQuantity < 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Quantity cannot be negative.' 
+      });
+    }
+
     inventory.quantity = updatedQuantity;
+
+    // Add entry to edit history
     inventory.editHistory.push({
+      date: new Date(),
       quantityAdded: quantityToAdd,
       updatedQuantity,
       description,
-      creditOrDebit: 'credit',
+      creditOrDebit: quantityToAdd > 0 ? 'credit' : 'debit',
     });
 
+    // Save the updated inventory item
     const updatedInventory = await inventory.save();
+
+    // Respond with the updated inventory item
     res.status(200).json({
       success: true,
       message: 'Inventory updated successfully.',
       data: updatedInventory,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error updating inventory.', error });
+    console.error('Error updating inventory:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error updating inventory.', 
+      error: error.message || error 
+    });
   }
 });
+
 
 
 //  inventory list
@@ -598,147 +639,107 @@ router.get('/get-assets-by-gram/:gramPanchayatId', async (req, res) => {
 
 //----------------------------
 
-// API to post inventory distribution information for a specific Gram Panchayat by ID
-// http://localhost:5050/v1/api/phed/get-assets-by-gram/:gramPanchayatId
+
+
+// API to get inventory distribution information for a specific Gram Panchayat by ID
+// http://localhost:5050/v1/api/phed//inventory/give-to-gram/:gramPanchayatId
 router.post('/inventory/give-to-gram/:gramPanchayatId', async (req, res) => {
   const { gramPanchayatId } = req.params;
   const { inventoryName, quantity, description, date } = req.body;
 
   try {
-      // Validate input
-      if (!inventoryName || !quantity || !description || !date) {
-          return res.status(400).json({ success: false, message: 'Inventory name, quantity, description, and date are required.' });
-      }
-
-      // Find the inventory by name (inventoryName is unique)
-      const inventory = await InventoryPhed.findOne({ name: inventoryName });
-      if (!inventory) {
-          return res.status(404).json({ success: false, message: 'Inventory not found.' });
-      }
-
-      // Check if the inventory has sufficient quantity
-      if (inventory.quantity < quantity) {
-          return res.status(400).json({ success: false, message: `Not enough inventory quantity available. Available: ${inventory.quantity}, Requested: ${quantity}` });
-      }
-
-      // Find the Gram Panchayat by _id (gramPanchayatId)
-      const gramPanchayat = await Grampanchayat.findById(gramPanchayatId);
-      if (!gramPanchayat) {
-          return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
-      }
-
-      // Deduct the inventory quantity (debit operation)
-      inventory.quantity -= quantity;
-
-      // Add an entry to the inventory's edit history (decrease in quantity)
-      inventory.editHistory.push({
-          quantityAdded: -quantity, // Decrease quantity
-          updatedQuantity: inventory.quantity, // New updated quantity
-          description, // Description of the transaction
-          creditOrDebit: 'debit', // Transaction is a debit (decrease in quantity)
-          gramPanchayatId: gramPanchayat._id, // Track which Gram Panchayat received the inventory
+    // Validate required fields
+    if (!inventoryName || quantity === undefined || !description || !date) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields (inventoryName, quantity, description, and date) are required.',
       });
+    }
 
-      // Save the updated inventory document
-      await inventory.save();
+    // Find the PHED Inventory item by name
+    const inventoryPhed = await InventoryPhed.findOne({ name: inventoryName });
+    if (!inventoryPhed) {
+      return res.status(404).json({ success: false, message: 'PHED Inventory item not found.' });
+    }
 
-      // Populate the gramPanchayatId in the editHistory with selected fields
-      const updatedInventory = await InventoryPhed.findOne({ name: inventoryName }).populate({
-          path: 'editHistory.gramPanchayatId',
-          select: 'villageName city district state pincode', // Select the required fields
-          strictPopulate: false // Allow population even if gramPanchayatId is in editHistory schema
+    // Check available quantity in PHED Inventory
+    if (inventoryPhed.quantity < quantity) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient quantity. Available: ${inventoryPhed.quantity}, Requested: ${quantity}`,
       });
+    }
 
-      // Respond with success
-      res.status(200).json({
-          success: true,
-          message: `${quantity} ${inventoryName} given to ${gramPanchayat.name} successfully.`,
-          data: updatedInventory,
+    // Find Gram Panchayat by ID
+    const gramPanchayat = await Grampanchayat.findById(gramPanchayatId);
+    if (!gramPanchayat) {
+      return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
+    }
+
+    // Deduct quantity from PHED Inventory and log edit history
+    inventoryPhed.quantity -= quantity;
+    inventoryPhed.editHistory.push({
+      date: new Date(date),
+      quantityAdded: -quantity,
+      updatedQuantity: inventoryPhed.quantity,
+      description,
+      creditOrDebit: 'debit',
+      gramPanchayatId: gramPanchayat._id, // Link Gram Panchayat to history
+    });
+    await inventoryPhed.save();
+
+    // Find or create Gram Panchayat Inventory (InventoryGp)
+    let inventoryGp = await InventoryGp.findOne({
+      name: inventoryName,
+      grampanchayatId: gramPanchayatId,
+    });
+
+    if (!inventoryGp) {
+      // Create a new Gram Panchayat inventory record
+      inventoryGp = new InventoryGp({
+        name: inventoryName,
+        grampanchayatId: gramPanchayatId,
+        quantity: quantity,
+        editHistory: [
+          {
+            date: new Date(date),
+            quantityAdded: quantity,
+            updatedQuantity: quantity,
+            description,
+            creditOrDebit: 'credit',
+          },
+        ],
       });
+    } else {
+      // Update existing Gram Panchayat inventory
+      const newQuantity = inventoryGp.quantity + quantity;
+      inventoryGp.editHistory.push({
+        date: new Date(date),
+        quantityAdded: quantity,
+        updatedQuantity: newQuantity,
+        description,
+        creditOrDebit: 'credit',
+      });
+      inventoryGp.quantity = newQuantity;
+    }
+    await inventoryGp.save();
+
+    // Respond with success
+    res.status(200).json({
+      success: true,
+      message: `${quantity} ${inventoryName} successfully distributed to ${gramPanchayat.name}.`,
+      data: {
+        updatedPhedInventory: inventoryPhed,
+        updatedGpInventory: inventoryGp,
+      },
+    });
   } catch (error) {
-      console.error('Error during inventory distribution:', error);
-      res.status(500).json({
-          success: false,
-          message: 'Server error.',
-      });
-  }
-});
-
-// API to get inventory distribution information for a specific Gram Panchayat by ID
-// http://localhost:5050/v1/api/phed//inventory/get-inventory-by-gram/:gramPanchayatId
-router.get('/inventory/get-inventory-by-gram/:gramPanchayatId', async (req, res) => {
-  const { gramPanchayatId } = req.params;
-  const { search } = req.query;  // Capture the search query parameter
-
-  try {
-      // Find the Gram Panchayat by ID
-      const gramPanchayat = await Grampanchayat.findById(gramPanchayatId);
-      if (!gramPanchayat) {
-          return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
-      }
-
-      // Build the query object for InventoryPhed based on the presence of 'search' parameter
-      let query = { 'editHistory.gramPanchayatId': gramPanchayatId };
-      
-      if (search) {
-          // If 'search' query is provided, filter inventory by name
-          query.name = { $regex: search, $options: 'i' };  // Case-insensitive search
-      }
-
-      // Find all inventory items that match the query, and populate the gramPanchayatId in editHistory
-      const inventories = await InventoryPhed.find(query).populate({
-          path: 'editHistory.gramPanchayatId',
-          select: 'villageName city district state pincode', // Populate required Gram Panchayat fields
-      });
-
-      if (!inventories || inventories.length === 0) {
-          return res.status(404).json({ success: false, message: 'No inventory items found for this Gram Panchayat.' });
-      }
-
-      // Filter and format the response to only include relevant data for each inventory item
-      const inventoryDetails = inventories.map(inventory => {
-          // Filter the editHistory to only include the entries related to the current Gram Panchayat
-          const filteredEditHistory = inventory.editHistory.filter(entry => 
-              entry.gramPanchayatId && entry.gramPanchayatId._id.toString() === gramPanchayatId
-          );
-
-          return {
-              inventoryName: inventory.name,
-              currentQuantity: inventory.quantity,
-              // Add the filtered history specific to this Gram Panchayat
-              editHistory: filteredEditHistory.map(entry => ({
-                  date: entry.date,
-                  quantityAdded: entry.quantityAdded,
-                  updatedQuantity: entry.updatedQuantity,
-                  description: entry.description,
-                  gramPanchayatId: entry.gramPanchayatId, // Include gramPanchayatId to ensure it’s populated
-              })),
-          };
-      });
-
-      // Respond with the inventory distribution data
-      res.status(200).json({
-          success: true,
-          message: 'Inventory distribution for Gram Panchayat retrieved successfully.',
-          data: {
-              gramPanchayat: {
-                  name: gramPanchayat.name,
-                  villageName: gramPanchayat.villageName,
-                  city: gramPanchayat.city,
-                  district: gramPanchayat.district,
-                  state: gramPanchayat.state,
-                  pincode: gramPanchayat.pincode,
-              },
-              inventories: inventoryDetails,
-          }
-      });
-
-  } catch (error) {
-      console.error('Error fetching inventory distribution for Gram Panchayat:', error);
-      res.status(500).json({
-          success: false,
-          message: 'Server error.',
-      });
+    console.error('Error during inventory distribution:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error occurred while processing the request.',
+      error: error.message,
+    });
   }
 });
 

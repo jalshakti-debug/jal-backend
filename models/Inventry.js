@@ -1,37 +1,22 @@
 const mongoose = require('mongoose');
 
-// Define the inventory schema
+
+
+
+
 const inventorySchema = new mongoose.Schema({
-    grampanchayatId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Grampanchayat',  // Reference to the Grampanchayat model
-        required: true,
+  name: { type: String, required: true, unique: true }, // Invenory Name name
+  quantity: { type: Number, default: 0 }, // Current quantity of the asset
+  grampanchayatId: { type: mongoose.Schema.Types.ObjectId, ref: 'Grampanchayat', required: true }, // Reference to Grampanchayat
+  editHistory: [
+    {
+      date: { type: Date, default: Date.now }, // Date of edit
+      quantityAdded: Number, // Quantity added or modified
+      updatedQuantity: Number, // Quantity after the edit
+      creditOrDebit: { type: String, enum: ['credit', 'debit'] },
+      description: { type: String, required: true }, // Description of the change
     },
-    chemical: {
-        type: [String],  // Array of strings to store chemical items like 'Antiforms', 'Biocides'
-        default: [],
-    },
-    filter: {
-        type: [String],  // Array of strings to store filter items like 'Sand Filter', 'Carbon Filter'
-        default: [],
-    },
-    spareParts: {
-        type: [String],  // Array of strings to store spare parts like 'Cleaning Agent', 'Safety Equipment'
-        default: [],
-    },
-    amount_spent: {
-        type: Number,
-        required: true,  // The total amount spent for the inventory
-    },
-    receipt: {
-        type: String,  // Store receipt URL or file path
-        required: true,  // This should be provided for the inventory record
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,  // Automatically set the date when the inventory record is created
-    },
+  ],
 });
 
-// Create and export the model
-module.exports = mongoose.model('Inventory', inventorySchema);
+module.exports = mongoose.model('InventoryGp', inventorySchema);
