@@ -16,6 +16,12 @@ const FundRequest = require('../../models/FundRequest');
 const Announcement = require('../../models/Announcement'); // Import the Announcement model
 const router = express.Router();
 const Alert = require('../../models/Alert'); // Import the Alert model
+const Bill = require("../../models/Bill")
+
+
+
+
+
 //http://localhost:5050/v1/api/grampanchayat/register
 router.post('/register', async (req, res) => {
     const { name, grampanchayatId, address, villageName, city, district, state, pincode, mobile, password} = req.body;
@@ -1022,8 +1028,87 @@ router.get('/alerts', async (req, res) => {
       res.status(500).json({ success: false, message: 'Internal Server Error.' });
     }
   });
+
+
     
 
 
-  
+
+
+
+
+// POST  http://localhost:5050/v1/api/grampanchayat/send-bill
+router.post("/send-bill", authenticateGrampanchayat, async (req, res) => {
+    const GrampanchayatId = req.user._id;
+    try {
+        const { consumerId, amount, date } = req.body;
+
+        // Convert the date string to a Date object
+        const billDate = new Date(date);
+        
+        // Add 10 days to the bill date
+        const lastDate = new Date(billDate);
+        lastDate.setDate(billDate.getDate() + 10);
+
+        // Format the date in dd-mm-yy
+        const formattedDate = `${billDate.getDate()}-${billDate.getMonth() + 1}-${billDate.getFullYear()}`;
+        const formattedLastDate = `${lastDate.getDate()}-${lastDate.getMonth() + 1}-${lastDate.getFullYear()}`;
+
+        const bill = new Bill({
+            consumerId: consumerId,
+            amount: amount,
+            date: formattedDate,
+            lastDate: formattedLastDate,
+            gpId: GrampanchayatId
+        });
+
+        const savedBill = await bill.save();
+
+        res.status(201).json({
+            success: true,
+            message: "Bill created successfully",
+            data: savedBill
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error creating bill",
+            error: error.message
+        });
+    }
+});
+
+// GET  http://localhost:5050/v1/api/grampanchayat/get-bill/:consumerId
+router.get("/get-bill/:consumerId", authenticateGrampanchayat, async (req, res) => {
+    const GrampanchayatId = req.user._id; // Get Gram Panchayat ID from authenticated user
+    const { consumerId } = req.params; // Get consumerId from the request parameters
+
+    try {
+        // Find bills for the given consumerId and the authenticated Gram Panchayat
+        const bills = await Bill.find({ consumerId: consumerId, gpId: GrampanchayatId });
+
+        if (bills.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No bills found for the specified consumer ID"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Bills retrieved successfully",
+            data: bills
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching bills",
+            error: error.message
+        });
+    }
+});
+
+
+
 module.exports = router;
