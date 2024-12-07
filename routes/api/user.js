@@ -4,8 +4,8 @@ const { authenticateGrampanchayat, authenticateUser} = require('../../middlewear
 const GramUser = require('../../models/GramUser');
 const router = express.Router();
 const crypto = require('crypto');
-const generateToken = require('../../middlewear/token')
-
+const generateToken = require('../../middlewear/token');
+const UserComplaint = require('../../models/UserComplaint');
 
 
 

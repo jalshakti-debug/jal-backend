@@ -705,7 +705,7 @@ router.get('/announcements',authenticateGrampanchayat , async (req, res) => {
    
     const GrampanchayatId = req.user._id;
     const grampanchayat = await Grampanchayat.findById(GrampanchayatId);
-    
+        
    
 
     if (!grampanchayat) {
@@ -717,7 +717,6 @@ router.get('/announcements',authenticateGrampanchayat , async (req, res) => {
         .populate('receiver', 'name grampanchayatId pincode address')
         .sort({ createdAt: -1 });
   
-        console.log(announcements)
       if (announcements.length === 0) {
         return res.status(404).json({
           success: false,

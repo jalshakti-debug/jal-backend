@@ -196,22 +196,33 @@ router.get('/gp-details/:grampanchayatId', async (req, res) => {
 // http://localhost:5050/v1/api/phed/addAsset
 router.post('/addAsset', async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, quantity, description, date } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Asset name is required.' });
+    // Validate required fields
+    if (!name || !quantity || !description || !date) {
+      return res.status(400).json({ message: 'All fields are required.' });
     }
 
+    // Check for an existing asset
     const existingAsset = await AssetPhed.findOne({ name });
     if (existingAsset) {
       return res.status(400).json({ message: 'Asset already exists.' });
     }
 
-    const newAsset = new AssetPhed({ name });
+    // Create and save the new asset
+    const newAsset = new AssetPhed({
+      name,
+      quantity,
+      description,
+      date,
+    });
     await newAsset.save();
 
+    // Respond with success
     return res.status(201).json({ message: 'Asset added successfully.', asset: newAsset });
   } catch (error) {
+    // Log the error and return a server error response
+    console.error('Error during asset addition:', error);
     return res.status(500).json({ message: 'Server error.', error: error.message });
   }
 });
@@ -425,98 +436,88 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
   const { assetName, quantity, description, date } = req.body;
 
   try {
-      // Validate input
-      if (!assetName || !quantity || !description || !date) {
-          return res.status(400).json({ success: false, message: 'Asset name, quantity, description, and date are required.' });
-      }
+    // Validate input
+    if (!assetName || !quantity || !description || !date) {
+      return res.status(400).json({ success: false, message: 'All fields are required.' });
+    }
 
-      // Find the asset by name (assetName is unique)
-      const asset = await AssetPhed.findOne({ name: assetName });
-      if (!asset) {
-          return res.status(404).json({ success: false, message: 'Asset not found.' });
-      }
+    // Find the asset by name
+    const asset = await AssetPhed.findOne({ name: assetName });
+    console.log(asset)
+    if (!asset) {
+      return res.status(404).json({ success: false, message: 'Asset not found.' });
+    }
 
-      // Check if the asset has sufficient quantity
-      if (asset.quantity < quantity) {
-          return res.status(400).json({ success: false, message: `Not enough asset quantity available. Available: ${asset.quantity}, Requested: ${quantity}` });
-      }
-
-      // Find the Gram Panchayat by _id (gramPanchayatId)
-      const gramPanchayat = await Grampanchayat.findById(gramPanchayatId);
-      if (!gramPanchayat) {
-          return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
-      }
-
-      // Deduct the asset quantity from the inventory (debit operation)
-      asset.quantity -= quantity;
-
-      // Add an entry to the asset's edit history (decrease in quantity)
-      asset.editHistory.push({
-          quantityAdded: -quantity, // Decrease quantity
-          updatedQuantity: asset.quantity, // New updated quantity
-          description, // Description of the transaction
-          creditOrDebit: 'debit', // Transaction is a debit (decrease in quantity)
-          gramPanchayatId: gramPanchayat._id, // Track which Gram Panchayat received the asset
+    // Check available quantity
+    if (asset.quantity < quantity) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient quantity. Available: ${asset.quantity}, Requested: ${quantity}`,
       });
+    }
 
-      // Save the updated asset document
-      await asset.save();
+    // Find the Gram Panchayat
+    const gramPanchayat = await Grampanchayat.findById(gramPanchayatId);
+    if (!gramPanchayat) {
+      return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
+    }
 
-      // Populate the gramPanchayatId in the editHistory with selected fields
-      const updatedAsset = await AssetPhed.findOne({ name: assetName }).populate({
-          path: 'editHistory.gramPanchayatId',
-          select: 'villageName city district state pincode', // Select the required fields
-      });
+    // Deduct from AssetPhed quantity
+    asset.quantity -= quantity;
+    asset.editHistory.push({
+      date: new Date(),
+      quantityAdded: -quantity,
+      updatedQuantity: asset.quantity,
+      description,
+      creditOrDebit: 'debit',
+      gramPanchayatId: gramPanchayat._id,
+    });
+    await asset.save();
 
-      let assetGP = await AssetGp.findOne({ name: assetName, grampanchayatId: gramPanchayatId });
-      // If asset doesn't exist, create it
-      let previousQuantity = 0;
-      if (!assetGP) {
-        let assetNEWGP = new AssetGp({
-          name: assetName,
-          grampanchayatId: gramPanchayat._id,
-          quantity: quantity,
-          editHistory: [{
+    // Find or create the AssetGp entry
+    let assetGP = await AssetGp.findOne({ name: assetName, grampanchayatId: gramPanchayatId });
+    if (!assetGP) {
+      // Create new AssetGp record
+      assetGP = new AssetGp({
+        name: assetName,
+        grampanchayatId: gramPanchayat._id,
+        quantity: quantity,
+        editHistory: [
+          {
             date: new Date(),
-            quantityAdded: req.body.quantity,
-            updatedQuantity: 0,
+            quantityAdded: quantity,
+            updatedQuantity: quantity,
             description: description || 'N/A',
             creditOrDebit: 'credit',
-        }],
-        });
-        await assetNEWGP.save();
-
-      }else{
-        // Update the quantity and add edit history
-        const quantityToAdd = Number(quantity) || 0;
-        assetGP.name = assetName;
-        assetGP.quantity = previousQuantity + quantityToAdd;
-        assetGP.editHistory.push({
-            date: new Date(),
-            quantityAdded: quantityToAdd,
-            updatedQuantity: assetGP.quantity,
-            description: description || 'N/A',
-            creditOrDebit: 'credit',
-        });
-        await assetGP.save();
-      }
-
-      // Save the asset
-
-      // Respond with success
-      res.status(200).json({
-          success: true,
-          message: `${quantity} ${assetName} given to ${gramPanchayat.name} successfully.`,
-          data: updatedAsset,
+          },
+        ],
       });
+    } else {
+      // Update existing AssetGp record
+      const newQuantity = assetGP.quantity + quantity;
+      assetGP.editHistory.push({
+        date: new Date(),
+        quantityAdded: quantity,
+        updatedQuantity: newQuantity,
+        description: description || 'N/A',
+        creditOrDebit: 'credit',
+      });
+      assetGP.quantity = newQuantity;
+    }
+    await assetGP.save();
+
+    // Respond with success
+    res.status(200).json({
+      success: true,
+      message: `${quantity} ${assetName} successfully distributed to ${gramPanchayat.name}.`,
+      data: { updatedAsset: asset, updatedGpAsset: assetGP },
+    });
   } catch (error) {
-      console.error('Error during asset distribution:', error);
-      res.status(500).json({
-          success: false,
-          message: 'Server error.',
-      });
+    console.error('Error during asset distribution:', error);
+    res.status(500).json({ success: false, message: 'Server error.', error: error.message });
   }
 });
+
 
 // API to get asset distribution information for a specific Gram Panchayat by ID
 // http://localhost:5050/v1/api/phed/get-assets-by-gram/:gramPanchayatId
@@ -773,8 +774,7 @@ router.get('/inventory/:grampanchayatId', async (req, res) => {
 router.post('/announcements/:grampanchayatId', async (req, res) => {
   const { message } = req.body;
   const { grampanchayatId } = req.params; // Get grampanchayatId from the route params
-
-  // Basic validation for message
+  // Basic validation for message 
   if (!message ) {
     return res.status(400).json({ success: false, message: 'Message is required' });
   }
@@ -788,7 +788,7 @@ router.post('/announcements/:grampanchayatId', async (req, res) => {
     console.log('Received grampanchayatId:', grampanchayatId);
 
     // Check if Grampanchayat exists using the provided grampanchayatId
-    const grampanchayat = await Grampanchayat.findOne({ grampanchayatId });
+    const grampanchayat = await Grampanchayat.findOne({ grampanchayatId: grampanchayatId });
 
     // Debug log: Output if Grampanchayat is found or not
     if (!grampanchayat) {
