@@ -524,68 +524,65 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
 // http://localhost:5050/v1/api/phed/get-assets-by-gram/674cb0379b6f886bf571f334?search=tap search also 
 router.get('/get-assets-by-gram/:gramPanchayatId', async (req, res) => {
   const { gramPanchayatId } = req.params;
-  const { search } = req.query;  // Capture the search query parameter
+  const { search } = req.query; // Optional search query
 
   try {
-      // Find the Gram Panchayat by ID
-      const gramPanchayat = await Grampanchayat.findById(gramPanchayatId);
-      if (!gramPanchayat) {
-          return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
-      }
+    // Validate Gram Panchayat existence
+    const gramPanchayat = await Grampanchayat.findById(gramPanchayatId);
+    if (!gramPanchayat) {
+      return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
+    }
 
-      // Build the query object for AssetPhed based on the presence of 'search' parameter
-      let query = { 'editHistory.gramPanchayatId': gramPanchayatId };
-      
-      if (search) {
-          // If 'search' query is provided, filter assets by name
-          query.name = { $regex: search, $options: 'i' };  // Case-insensitive search
-      }
+    // Build query for AssetGp
+    let query = { grampanchayatId: gramPanchayatId };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' }; // Filter by asset name
+    }
 
-      // Find all assets that match the query
-      const assets = await AssetPhed.find(query).populate({
-          path: 'editHistory.gramPanchayatId',
-          select: 'villageName city district state pincode', // Populate required Gram Panchayat fields
-      });
+    // Fetch assets allocated to this Gram Panchayat
+    const assets = await AssetGp.find(query);
 
-      if (!assets.length) {
-          return res.status(404).json({ success: false, message: 'No assets found for this Gram Panchayat.' });
-      }
+    if (!assets.length) {
+      return res.status(404).json({ success: false, message: 'No assets found for this Gram Panchayat.' });
+    }
 
-      // Filter and format the response to only include relevant data for each asset
-      const assetDetails = assets.map(asset => {
-          return {
-              assetName: asset.name,
-              currentQuantity: asset.quantity,
-              // Ensure 'gramPanchayatId' exists before accessing its properties
-              editHistory: asset.editHistory.filter(entry => entry.gramPanchayatId && entry.gramPanchayatId._id.toString() === gramPanchayatId)
-          };
-      });
+    // Format the response with asset details and history
+    const assetDetails = assets.map(asset => ({
+      assetName: asset.name,
+      currentQuantity: asset.quantity,
+      editHistory: asset.editHistory.map(entry => ({
+        date: entry.date,
+        quantityAdded: entry.quantityAdded,
+        updatedQuantity: entry.updatedQuantity,
+        description: entry.description,
+      })),
+    }));
 
-      // Respond with the asset distribution data
-      res.status(200).json({
-          success: true,
-          message: 'Asset distribution for Gram Panchayat retrieved successfully.',
-          data: {
-              gramPanchayat: {
-                  name: gramPanchayat.name,
-                  villageName: gramPanchayat.villageName,
-                  city: gramPanchayat.city,
-                  district: gramPanchayat.district,
-                  state: gramPanchayat.state,
-                  pincode: gramPanchayat.pincode,
-              },
-              assets: assetDetails,
-          }
-      });
-
+    // Respond with Gram Panchayat details and asset history
+    res.status(200).json({
+      success: true,
+      message: 'Assets and history for Gram Panchayat retrieved successfully.',
+      data: {
+        gramPanchayat: {
+          name: gramPanchayat.name,
+          villageName: gramPanchayat.villageName,
+          city: gramPanchayat.city,
+          district: gramPanchayat.district,
+          state: gramPanchayat.state,
+          pincode: gramPanchayat.pincode,
+        },
+        assets: assetDetails,
+      },
+    });
   } catch (error) {
-      console.error('Error fetching asset distribution for Gram Panchayat:', error);
-      res.status(500).json({
-          success: false,
-          message: 'Server error.',
-      });
+    console.error('Error fetching Gram Panchayat assets:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error.',
+    });
   }
 });
+
 
 //----------------------------
 
