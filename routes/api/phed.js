@@ -193,7 +193,7 @@ router.get('/gp-details/:grampanchayatId', async (req, res) => {
 
 
 // Add a new asset
-//      
+//      http://localhost:5050/v1/api/phed/addAsset
 router.post('/addAsset', async (req, res) => {
   try {
     const { name, quantity, description, date } = req.body;
@@ -209,23 +209,34 @@ router.post('/addAsset', async (req, res) => {
       return res.status(400).json({ message: 'Asset already exists.' });
     }
 
-    // Create and save the new asset
+    // Create and save the new asset with initial history
     const newAsset = new AssetPhed({
       name,
       quantity,
-      description,
-      date,
+      editHistory: [
+        {
+          date: new Date(date), // Use the provided date or default to current
+          quantityAdded: quantity,
+          updatedQuantity: quantity,
+          description: description,
+          creditOrDebit: 'credit',
+        },
+      ],
     });
     await newAsset.save();
 
     // Respond with success
-    return res.status(201).json({ message: 'Asset added successfully.', asset: newAsset });
+    return res.status(201).json({
+      message: 'Asset added successfully, including initial history.',
+      asset: newAsset,
+    });
   } catch (error) {
     // Log the error and return a server error response
     console.error('Error during asset addition:', error);
     return res.status(500).json({ message: 'Server error.', error: error.message });
   }
 });
+
 
 // Add quantity to an existing asset
 // http://localhost:5050/v1/api/phed/addQuantity
@@ -786,7 +797,7 @@ router.post('/announcements/:grampanchayatId', async (req, res) => {
     console.log('Received grampanchayatId:', grampanchayatId);
 
     // Check if Grampanchayat exists using the provided grampanchayatId
-    const grampanchayat = await Grampanchayat.findOne({ grampanchayatId: grampanchayatId });
+    const grampanchayat = await Grampanchayat.findOne({ _id: grampanchayatId });
 
     // Debug log: Output if Grampanchayat is found or not
     if (!grampanchayat) {
