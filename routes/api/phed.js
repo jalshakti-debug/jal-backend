@@ -772,35 +772,32 @@ router.get('/inventory/:grampanchayatId', async (req, res) => {
 // http://localhost:5050/v1/api/phed/announcements/:grampanchayatId
 router.post('/announcements/:grampanchayatId', async (req, res) => {
   const { message } = req.body;
-  const { grampanchayatId } = req.params; // Get grampanchayatId from the route params
+  const { grampanchayatId } = req.params;
 
-  // Basic validation for message
-  if (!message ) {
+  // Validate message
+  if (!message) {
     return res.status(400).json({ success: false, message: 'Message is required' });
   }
 
-  if (!grampanchayatId ) {
-    return res.status(400).json({ success: false, message: 'Grampanchayat ID is required' });
+  // Validate grampanchayatId as a valid Mongoose ObjectId
+  if (!mongoose.Types.ObjectId.isValid(grampanchayatId)) {
+    return res.status(400).json({ success: false, message: 'Invalid Grampanchayat ID' });
   }
 
   try {
-    // Debug log: Check what grampanchayatId is being passed
-    console.log('Received grampanchayatId:', grampanchayatId);
+    // Check if Grampanchayat exists using the provided ObjectId
+    const grampanchayat = await Grampanchayat.findById(grampanchayatId);
 
-    // Check if Grampanchayat exists using the provided grampanchayatId
-    const grampanchayat = await Grampanchayat.findOne({ grampanchayatId });
-
-    // Debug log: Output if Grampanchayat is found or not
     if (!grampanchayat) {
       console.log('Grampanchayat not found:', grampanchayatId);
       return res.status(404).json({ success: false, message: 'Grampanchayat not found' });
     }
 
-    // Create the announcement with the received data
+    // Create the announcement
     const announcement = new Announcement({
       message,
-      grampanchayatId : grampanchayat._id ,
-      receiver: grampanchayat._id, // Set the receiver field to Grampanchayat's ObjectId
+      grampanchayatId: grampanchayat._id, // Explicitly linking Grampanchayat's ObjectId
+      receiver: grampanchayat._id,
     });
 
     // Save the announcement to the database
@@ -812,9 +809,69 @@ router.post('/announcements/:grampanchayatId', async (req, res) => {
       message: 'Announcement sent successfully',
       announcement,
     });
-
   } catch (error) {
     console.error('Error sending announcement:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+});
+
+// Get Announcements by Grampanchayat ID
+// http://localhost:5050/v1/api/phed/announcements/:grampanchayatId
+router.get('/announcements/:grampanchayatId', async (req, res) => {
+  const { grampanchayatId } = req.params;
+
+  // Validate grampanchayatId as a valid Mongoose ObjectId
+  if (!mongoose.Types.ObjectId.isValid(grampanchayatId)) {
+    return res.status(400).json({ success: false, message: 'Invalid Grampanchayat ID' });
+  }
+
+  try {
+    // Check if Grampanchayat exists
+    const grampanchayat = await Grampanchayat.findById(grampanchayatId);
+    if (!grampanchayat) {
+      console.log('Grampanchayat not found:', grampanchayatId);
+      return res.status(404).json({ success: false, message: 'Grampanchayat not found' });
+    }
+
+    // Find all announcements for the given Grampanchayat ID
+    const announcements = await Announcement.find({ receiver: grampanchayatId });
+
+    // Return the announcements
+    return res.status(200).json({
+      success: true,
+      message: 'Announcements retrieved successfully',
+      announcements,
+    });
+  } catch (error) {
+    console.error('Error retrieving announcements:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+});
+
+
+// Get All Announcements
+// http://localhost:5050/v1/api/phed/announcements
+router.get('/announcements', async (req, res) => {
+  try {
+    // Fetch all announcements from the database
+    const announcements = await Announcement.find().populate('receiver', 'name _id'); // Populate receiver field for related details
+
+    // Return the announcements
+    return res.status(200).json({
+      success: true,
+      message: 'Announcements retrieved successfully',
+      announcements,
+    });
+  } catch (error) {
+    console.error('Error retrieving announcements:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

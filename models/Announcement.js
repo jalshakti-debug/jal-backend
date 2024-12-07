@@ -1,11 +1,14 @@
-// models/Announcement.js
 const mongoose = require('mongoose');
 
-const announcementSchema = new mongoose.Schema({
-  message: { type: String, required: true },
-  receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'Grampanchayat', required: true },
-  grampanchayatId: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-});
+const announcementSchema = new mongoose.Schema(
+  {
+    message: { type: String, required: true },
+    receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'Grampanchayat', required: true }, // Reference to Grampanchayat
+  },
+  {
+    timestamps: true, // Automatically add createdAt and updatedAt fields
+  }
+);
 
+// Export the model
 module.exports = mongoose.model('Announcement', announcementSchema);
