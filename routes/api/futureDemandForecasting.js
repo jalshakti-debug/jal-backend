@@ -1,14 +1,14 @@
 const express = require('express');
 const Notification = require('../../models/futureDemandForecasting');
 const router = express.Router();
+const { authenticateGrampanchayat } = require('../../middlewear/auth');
 
 const InventoryGp = require('../../models/Inventry');
 
-router.get('/:grampanchayatId', async (req, res) => {
+router.get('/', authenticateGrampanchayat, async (req, res) => {
   try {
-    const { grampanchayatId } = req.params;
 
-    const notifications = await Notification.find({ grampanchayatId })
+    const notifications = await Notification.find({ grampanchayatId: req.user._id})
       .sort({ createdAt: -1 })
       .populate('inventoryId', 'name'); // Populate inventory name
 
