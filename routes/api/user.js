@@ -31,7 +31,7 @@ router.post('/register', authenticateGrampanchayat, async (req, res) => {
         const consumerId = crypto.randomBytes(8).toString('hex').toUpperCase();
 
         // Generate a temporary password (it could also be set by Grampanchayat if required)
-        const password = crypto.randomBytes(6).toString('hex');
+        const password = Math.floor(100000 + Math.random() * 900000).toString();
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create a new user with the Grampanchayat's ID
