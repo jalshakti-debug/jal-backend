@@ -27,7 +27,7 @@ const userComplaintSchema = new Schema({
     status: {
         type: String,
         default: 'Pending',
-        enum: ['Pending', 'In Progress', 'Resolved', 'Closed'],
+        enum: ['Pending', 'Resolved',],
     },
     grampanchayatId: { type: mongoose.Schema.Types.ObjectId, ref: 'Grampanchayat' },
 },{timestamps: true}
