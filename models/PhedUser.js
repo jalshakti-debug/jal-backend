@@ -29,11 +29,12 @@ const PhedUserSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
-  otp: {
-    type: String,
+  OTP: {
+    type: Number,
+    required: false,
     default: null,
   },
-  otpExpires: {
+  OTPExpires: {
     type: Date,
     default: null,
   },

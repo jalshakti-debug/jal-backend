@@ -31,6 +31,15 @@ const workerSchema = new mongoose.Schema({
     ref: 'Grampanchayat', // Ensure this matches the Grampanchayat model name
     required: true 
   },
+  OTP: {
+    type: Number,
+    required: false,
+    default: null,
+  },
+  OTPExpires: {
+    type: Date,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -6,7 +6,15 @@ const router = express.Router();
 const crypto = require('crypto');
 const generateToken = require('../../middlewear/token');
 const UserComplaint = require('../../models/UserComplaint');
-
+const twilio = require('twilio');
+const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+const PhedUser = require('../../models/PhedUser');
+const Worker = require('../../models/Worker');
+const models = {
+  GramUser,
+  PhedUser,
+  Worker,
+};
 const mongoose = require('mongoose');
 
 
@@ -412,6 +420,94 @@ router.get('/:id', async (req, res) => {
       });
     }
   });
+
+
+  const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
+
+router.post('/otp-login', async (req, res) => {
+  const { mobile, userType } = req.body;
+
+  if (!mobile || !userType) {
+    return res.status(400).json({ message: 'Mobile number and user type are required.' });
+  }
+
+  if (!models[userType]) {
+    return res.status(400).json({ message: 'Invalid user type.' });
+  }
+
+  try {
+    const userModel = models[userType];
+    let user;
+    // Find user by mobile
+    if(userType == 'GramUser'){
+      user = await userModel.findOne({ mobileNo: mobile });
+    }else{
+      user = await userModel.findOne({ mobile: mobile });
+    }
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Generate OTP and set expiry time
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+
+    user.OTP = otp;
+    user.OTPExpires = otpExpiry;
+
+    await user.save();
+
+    // Send OTP via Twilio
+    await client.messages.create({
+      body: `Your OTP is ${otp}. It is valid for 10 minutes.`,
+      from: process.env.TWILIO_PHONE_NUMBER, // Your Twilio phone number
+      to: "+91"+mobile,
+    });
+
+    res.status(200).json({ message: 'OTP sent successfully.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error.' });
+  }
+});
+
+router.post('/verify-otp', async (req, res) => {
+  const { mobile, userType, otp } = req.body;
+
+  if (!mobile || !userType || !otp) {
+    return res.status(400).json({ message: 'Mobile, user type, and OTP are required.' });
+  }
+
+  if (!models[userType]) {
+    return res.status(400).json({ message: 'Invalid user type.' });
+  }
+
+  try {
+    const userModel = models[userType];
+
+    // Find user by mobile
+    const user = await userModel.findOne({ mobile });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    // Check if OTP matches and is not expired
+    if (user.OTP !== otp || new Date() > user.OTPExpires) {
+      return res.status(400).json({ message: 'Invalid or expired OTP.' });
+    }
+
+    // Clear OTP and expiry after successful verification
+    user.OTP = null;
+    user.OTPExpires = null;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Login successful.', user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error.' });
+  }
+});
 
 
 module.exports = router;

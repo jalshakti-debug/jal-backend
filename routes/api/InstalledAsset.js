@@ -6,7 +6,7 @@ const { authenticateGrampanchayat } = require('../../middlewear/auth');
 const Worker = require('../../models/Worker')
 
 // installed asset
-router.post('/', authenticateGrampanchayat, async (req, res) => {
+router.post('/', async (req, res) => {
     try {
 
         const newAsset = new InstalledAsset(req.body);
