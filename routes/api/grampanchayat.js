@@ -869,6 +869,7 @@ router.post('/worker/login', async (req, res) => {
 // http://localhost:5050/v1/api/grampanchayat/workers/674cb0379b6f886bf571f334
 router.get('/workers/:grampanchayatId', async (req, res) => {
     const { grampanchayatId } = req.params; // Extract grampanchayatId from route params
+    const { q } = req.query; // Extract q from query params
 
     // Validate grampanchayatId
     if (!grampanchayatId) {
@@ -877,9 +878,19 @@ router.get('/workers/:grampanchayatId', async (req, res) => {
             message: 'Grampanchayat ID is required.',
         });
     }
+
     try {
-        // Find all workers under the specified grampanchayatId
-        const workers = await Worker.find({ grampanchayatId });
+        // Build the query object
+        const query = { grampanchayatId };
+        if (q) {
+            query.$or = [
+                { name: { $regex: new RegExp(q, 'i') } }, // Case-insensitive search on name
+                { mobile: { $regex: new RegExp(q, 'i') } } // Case-insensitive search on mobile
+            ];
+        }
+
+        // Find all workers under the specified grampanchayatId and matching the query
+        const workers = await Worker.find(query);
 
         if (!workers || workers.length === 0) {
             return res.status(404).json({
