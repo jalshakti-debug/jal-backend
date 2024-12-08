@@ -1,5 +1,7 @@
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const GramUser = require('./GramUser');
 
 function generateComplaintId() {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
@@ -7,8 +9,9 @@ function generateComplaintId() {
 }
 
 const userComplaintSchema = new Schema({
-    consumerId: { // Change from userId to consumerId
-        type: String, // Assuming consumerId is a string
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'GramUser',
         required: true,
     },
     complaintId: {
@@ -26,20 +29,8 @@ const userComplaintSchema = new Schema({
         default: 'Pending',
         enum: ['Pending', 'In Progress', 'Resolved', 'Closed'],
     },
-    grampanchayatId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Grampanchayat', // Reference to Grampanchayat model
-        required: true, // This will link the complaint to the user's Grampanchayat
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now,
-    },
-});
+    grampanchayatId: { type: mongoose.Schema.Types.ObjectId, ref: 'Grampanchayat' },
+},{timestamps: true}
+);
 
-// Export the model
 module.exports = mongoose.model('UserComplaint', userComplaintSchema);

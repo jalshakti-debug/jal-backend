@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const generateToken = require('../../middlewear/token');
 const UserComplaint = require('../../models/UserComplaint');
 
+const mongoose = require('mongoose');
 
 
 // Register a new user
@@ -189,54 +190,228 @@ router.get('/profile', authenticateUser, async (req, res) => {
 
 
 
-
-// User can add complain
-  //http://localhost:5050/v1/api/user/usercomplaint
-  router.post('/usercomplaint', authenticateUser , async (req, res) => {
+// http://localhost:5050/v1/api/user/:id --> mongoose id
+router.get('/:id', async (req, res) => {
+    const { id } = req.params; // Extract user ID from the request parameters
+  
     try {
-        const {complaintId, complaintDetails, status } = req.body;
+      // Fetch the user by ID, excluding the password and populating Grampanchayat details
+      const user = await GramUser.findById(id)
+        .select('-password') // Exclude the user password
+        .populate('grampanchayatId', '-password'); // Exclude Grampanchayat password
   
-        // Check if the complaint details are provided
-        if (!complaintDetails) {
-            return res.status(400).json({
-                success: false,
-                message: 'Complaint details are required.',
-            });
-        }
-  
-        // Get the consumerId from the authenticated user
-        const consumerId = req.user.consumerId; // Use consumerId instead of userId
-        const grampanchayatId = req.user.grampanchayatId; // Get the Grampanchayat ID from the authenticated user
-  
-        // Prepare the data for the new UserComplaint record
-        const userComplaintData = {
-            consumerId, // Use consumerId instead of userId
-            complaintDetails,
-            status: status || 'Pending', // Default status is 'Pending'
-            grampanchayatId, // Link the complaint to the user's Grampanchayat
-            complaintId,
-        };
-  
-        // Create a new UserComplaint instance
-        const newUserComplaint = new UserComplaint(userComplaintData);
-  
-        // Save the new complaint
-        const savedUserComplaint = await newUserComplaint.save();
-  
-        // Return the response
-        res.status(201).json({
-            success: true,
-            message: 'User  complaint created successfully!',
-            data: savedUserComplaint,
+      // Check if the user exists
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found.',
         });
+      }
+  
+      // Return the user with populated Grampanchayat details
+      res.status(200).json({
+        success: true,
+        message: 'User fetched successfully.',
+        user,
+      });
     } catch (error) {
-        console.error('Error creating user complaint:', error);
-        res.status(500).json({
-            success: false,
-            message: 'An error occurred while creating the user complaint.',
-            error: error.message,
-        });
+      console.error('Error fetching user:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching user.',
+        error: error.message,
+      });
     }
   });
+  
+  // create user complaint
+  //http://localhost:5050/v1/api/user/complaint
+  router.post('/complaint', async (req, res) => {
+    const { userId, complaintDetails, grampanchayatId } = req.body;
+  
+    if (!userId || !complaintDetails || !grampanchayatId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID, complaint details, and Grampanchayat ID are required.',
+      });
+    }
+  
+    try {
+      const newComplaint = new UserComplaint({
+        userId,
+        complaintDetails,
+        grampanchayatId,
+      });
+  
+      const savedComplaint = await newComplaint.save();
+  
+      res.status(201).json({
+        success: true,
+        message: 'User complaint created successfully.',
+        complaint: savedComplaint,
+      });
+    } catch (error) {
+      console.error('Error creating user complaint:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error.',
+        error: error.message,
+      });
+    }
+  });
+  
+  // get complaints by grampanchayat id 
+  //http://localhost:5050/v1/api/user/complaint/by-gram/:grampanchayatId
+  router.get('/complaint/by-gram/:grampanchayatId', async (req, res) => {
+    const { grampanchayatId } = req.params;
+  
+    try {
+      // Validate that grampanchayatId is a valid ObjectId
+      if (!mongoose.Types.ObjectId.isValid(grampanchayatId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid Grampanchayat ID. Must be a valid ObjectId.',
+        });
+      }
+  
+      // Fetch complaints by Grampanchayat ID
+      const complaints = await UserComplaint.find({ grampanchayatId })
+        .populate('userId', 'name mobile consumerId mobileNo address') // Populate user info
+        .populate('grampanchayatId', 'name pincode mobile city address'); // Populate Grampanchayat info
+  
+      if (!complaints || complaints.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'No complaints found for this Grampanchayat.',
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Complaints retrieved successfully.',
+        complaints,
+      });
+    } catch (error) {
+      console.error('Error fetching complaints by Grampanchayat ID:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error.',
+        error: error.message,
+      });
+    }
+  });
+  
+  //http://localhost:5050/v1/api/user/complaint/list
+  router.get('/complaint/list', async (req, res) => {
+    try {
+      const complaints = await UserComplaint.find()
+        .populate('userId', 'name mobile consumerId mobileNo address') // Populate user info
+        .populate('grampanchayatId', 'name pincode mobile city '); // Populate Grampanchayat info
+  
+      if (!complaints || complaints.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'No complaints found.',
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Complaints retrieved successfully.',
+        complaints,
+      });
+    } catch (error) {
+      console.error('Error fetching user complaints:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error.',
+        error: error.message,
+      });
+    }
+  });
+
+  //http://localhost:5050/v1/api/user/complaint/by-user/:userId
+  router.get('/complaint/by-user/:userId', async (req, res) => {
+    const { userId } = req.params;
+  
+    try {
+      // Fetch complaints by userId
+      const complaints = await UserComplaint.find({ userId })
+        .populate('userId', 'name mobile consumerId mobileNo address') // Populate user info
+        .populate('grampanchayatId', 'name pincode mobile city address'); // Populate Grampanchayat info
+  
+      if (!complaints || complaints.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'No complaints found for this user.',
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Complaints retrieved successfully.',
+        complaints,
+      });
+    } catch (error) {
+      console.error('Error fetching complaints by User ID:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error.',
+        error: error.message,
+      });
+    }
+  });
+
+  router.put('/complaint/status/:id', async (req, res) => {
+    try {
+      const { id } = req.params; // MongoDB _id of the complaint
+      const { status } = req.body;
+  
+      // Validate the provided status
+      const validStatuses = ['Pending', 'Resolved'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status. Status must be one of the following: ${validStatuses.join(', ')}`,
+        });
+      }
+  
+      // Validate the MongoDB _id format
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid complaint ID.',
+        });
+      }
+  
+      // Find and update the complaint
+      const updatedComplaint = await UserComplaint.findByIdAndUpdate(
+        id, // Find by MongoDB _id
+        { status }, // Update the status field
+        { new: true } // Return the updated document
+      );
+  
+      if (!updatedComplaint) {
+        return res.status(404).json({
+          success: false,
+          message: 'Complaint not found.',
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Complaint status updated successfully.',
+        complaint: updatedComplaint,
+      });
+    } catch (error) {
+      console.error('Error updating complaint status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error.',
+        error: error.message,
+      });
+    }
+  });
+
 
 module.exports = router;
