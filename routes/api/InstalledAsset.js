@@ -23,9 +23,13 @@ router.post('/', async (req, res) => {
                 description: description || 'N/A',
                 creditOrDebit: 'credit',
             });
-            // if(assetGP > 10){
-            //     // 
-            // }
+            if(assetGP.quantity <= 10){
+            await Notification.create({
+                grampanchayatId: req.body.grampanchayatId,
+                inventoryId: assetGP._id,
+                message: `${assetGP.name}, inventory is running low. Please replenish it promptly to avoid shortages`,
+            });
+            }
             await assetGP.save();
         }
         res.status(201).json({
