@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const FinancialOverview = require('../../models/FinancialOverview');
-
+const mongoose = require('mongoose');
+const ObjectId = mongoose.Types.ObjectId;
 
 // 1. Credit Financial Data
 router.post('/credit', async (req, res) => {
@@ -33,12 +34,13 @@ router.get('/monthly-spent/:grampanchayatId', async (req, res) => {
         const endDate = new Date(req.query.year, req.query.month, 0);
 
         const spent = await FinancialOverview.aggregate([
-            { $match: { grampanchayatId, type: 'debit', date: { $gte: startDate, $lte: endDate } } },
+            { $match: { grampanchayatId: new ObjectId(grampanchayatId), type: 'debit', date: { $gte: startDate, $lte: endDate } } },
             { $group: { _id: null, totalSpent: { $sum: '$amount' } } }
         ]);
 
         res.status(200).json({ success: true, message: 'Monthly spent money fetched.', data: spent[0]?.totalSpent || 0 });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ success: false, message: 'Error fetching monthly spent money.', error: error.message });
     }
 });
@@ -51,7 +53,7 @@ router.get('/monthly-got/:grampanchayatId', async (req, res) => {
         const endDate = new Date(req.query.year, req.query.month, 0);
 
         const received = await FinancialOverview.aggregate([
-            { $match: { grampanchayatId, type: 'credit', date: { $gte: startDate, $lte: endDate } } },
+            { $match: { grampanchayatId: new ObjectId(grampanchayatId), type: 'credit', date: { $gte: startDate, $lte: endDate } } },
             { $group: { _id: null, totalReceived: { $sum: '$amount' } } }
         ]);
 
@@ -67,7 +69,7 @@ router.get('/net-received/:grampanchayatId', async (req, res) => {
         const { grampanchayatId } = req.params;
 
         const received = await FinancialOverview.aggregate([
-            { $match: { grampanchayatId, type: 'credit' } },
+            { $match: { grampanchayatId: new  ObjectId(grampanchayatId), type: 'credit' } },
             { $group: { _id: null, totalReceived: { $sum: '$amount' } } }
         ]);
 
@@ -83,7 +85,7 @@ router.get('/net-used/:grampanchayatId', async (req, res) => {
         const { grampanchayatId } = req.params;
 
         const used = await FinancialOverview.aggregate([
-            { $match: { grampanchayatId, type: 'debit' } },
+            { $match: { grampanchayatId: new ObjectId(grampanchayatId), type: 'debit' } },
             { $group: { _id: null, totalUsed: { $sum: '$amount' } } }
         ]);
 
