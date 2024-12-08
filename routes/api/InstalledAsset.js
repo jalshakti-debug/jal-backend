@@ -3,6 +3,7 @@ const router = express.Router();
 const InstalledAsset = require('../../models/InstalledAsset');
 const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
 const { authenticateGrampanchayat } = require('../../middlewear/auth');
+const Worker = require('../../models/Worker')
 
 // installed asset
 router.post('/', authenticateGrampanchayat, async (req, res) => {
@@ -68,7 +69,7 @@ router.put('/:id', async (req, res) => {
 // get by Grampanchayat
 router.get('/by-grampanchayat/:grampanchayatId', async (req, res) => {
     try {
-        const assets = await InstalledAsset.find({ grampanchayatId: req.params.grampanchayatId }).populate('Workers');
+        const assets = await InstalledAsset.find({ grampanchayatId: req.params.grampanchayatId }).populate('workerId', 'name mobile jobTitle');
         res.status(200).json({
             success: true,
             message: 'Installed assets fetched successfully.',
