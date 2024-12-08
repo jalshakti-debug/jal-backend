@@ -1,0 +1,82 @@
+const express = require('express');
+const Notification = require('../../models/futureDemandForecasting');
+const router = express.Router();
+
+const InventoryGp = require('../../models/Inventry');
+
+router.get('/:grampanchayatId', async (req, res) => {
+  try {
+    const { grampanchayatId } = req.params;
+
+    const notifications = await Notification.find({ grampanchayatId })
+      .sort({ createdAt: -1 })
+      .populate('inventoryId', 'name'); // Populate inventory name
+
+    res.status(200).json(notifications);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching notifications' });
+  }
+});
+
+router.patch('/:notificationId/read', async (req, res) => {
+    try {
+      const { notificationId } = req.params;
+  
+      const notification = await Notification.findByIdAndUpdate(
+        notificationId,
+        { isRead: true },
+        { new: true }
+      );
+  
+      if (!notification) {
+        return res.status(404).json({ error: 'Notification not found' });
+      }
+  
+      res.status(200).json(notification);
+    } catch (error) {
+      res.status(500).json({ error: 'Error marking notification as read' });
+    }
+  });
+
+  
+  router.get('/:notificationId', async (req, res) => {
+    try {
+      const { notificationId } = req.params;
+  
+      const notification = await Notification.findById(notificationId).populate(
+        'inventoryId',
+        'name'
+      );
+  
+      if (!notification) {
+        return res.status(404).json({ error: 'Notification not found' });
+      }
+  
+      res.status(200).json(notification);
+    } catch (error) {
+      res.status(500).json({ error: 'Error fetching notification details' });
+    }
+  });
+
+  router.post('/', async (req, res) => {
+    try {
+      const { grampanchayatId, inventoryId, message } = req.body;
+  
+      // Validation
+      if (!grampanchayatId || !inventoryId || !message) {
+        return res.status(400).json({ error: 'All fields are required: grampanchayatId, inventoryId, message.' });
+      }
+  
+      // Create new notification
+      const notification = await Notification.create({
+        grampanchayatId,
+        inventoryId,
+        message,
+      });
+  
+      res.status(201).json({ message: 'Notification created successfully', notification });
+    } catch (error) {
+      res.status(500).json({ error: 'Error creating notification', details: error.message });
+    }
+  });
+module.exports = router;
