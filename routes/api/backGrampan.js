@@ -433,7 +433,7 @@ router.get('/assets/list', async (req, res) => {
 router.post('/asset/add', authenticateGrampanchayat, async (req, res) => {
     try {
         const { description, amount_spent, receipt } = req.body;
-
+        console.log(req.grampanchayat)
         // Validate input fields
         if (!description || !amount_spent || !receipt) {
             return res.status(400).json({

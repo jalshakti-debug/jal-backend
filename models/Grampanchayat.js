@@ -20,6 +20,15 @@ const grampanchayatSchema = new mongoose.Schema({
     match: [/^\d{10}$/, 'Mobile number must be 10 digits'], 
     unique: true 
   },
+  OTP: {
+    type: Number,
+    required: false,
+    default: null,
+  },
+  OTPExpires: {
+    type: Date,
+    default: null,
+  },
   status: { type: Number, default: 1 },
 });
 

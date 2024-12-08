@@ -23,7 +23,10 @@ router.post('/', async (req, res) => {
                 description: description || 'N/A',
                 creditOrDebit: 'credit',
             });
-            await assetGP.save(); 
+            // if(assetGP > 10){
+            //     // 
+            // }
+            await assetGP.save();
         }
         res.status(201).json({
             success: true,

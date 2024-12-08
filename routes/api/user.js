@@ -10,10 +10,12 @@ const twilio = require('twilio');
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const PhedUser = require('../../models/PhedUser');
 const Worker = require('../../models/Worker');
+const Grampanchayat = require('../../models/Grampanchayat');
 const models = {
   GramUser,
   PhedUser,
   Worker,
+  Grampanchayat,
 };
 const mongoose = require('mongoose');
 
@@ -439,7 +441,9 @@ router.post('/otp-login', async (req, res) => {
     // Find user by mobile
     if(userType == 'GramUser'){
       user = await userModel.findOne({ mobileNo: mobile });
-    }else{
+    } else if(userType == 'Grampanchayat'){
+      user = await userModel.findOne({ mobile: mobile });
+    } else {
       user = await userModel.findOne({ mobile: mobile });
     }
     if (!user) {
@@ -492,9 +496,9 @@ router.post('/verify-otp', async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
-
+    console.log(user)
     // Check if OTP matches and is not expired
-    if (user.OTP !== otp || new Date() > user.OTPExpires) {
+    if (user.OTP != otp) {
       return res.status(400).json({ message: 'Invalid or expired OTP.' });
     }
 
@@ -504,7 +508,19 @@ router.post('/verify-otp', async (req, res) => {
 
     await user.save();
 
-    res.status(200).json({ message: 'Login successful.', user });
+      // Generate a JWT token
+      let token
+      if(userType == 'GramUser'){
+        token = generateToken(user._id, 'user');  // Pass user ID and role
+      }else if (userType == 'Grampanchayat'){
+         token = generateToken(user._id, 'grampanchayat');  // Pass user ID and role
+      }else if(userType == 'Worker'){
+        token = generateToken(user._id, 'worker');  // Pass user ID and role
+      }else{
+        token = generateToken(user._id, 'pheduser'); 
+      }
+  
+    res.status(200).json({ message: 'Login successful.', user: user, token:token });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Internal Server Error.' });

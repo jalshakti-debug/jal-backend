@@ -28,31 +28,31 @@ app.use("/v1/api/financial-overview", require('./routes/api/financialOverview'))
 app.use("/v1/api/future-demand-forecasting", require('./routes/api/futureDemandForecasting'));
 
 // TO Check Inventory is exits or no If exit then okay otherwise send notification
-cron.schedule('0 * * * *', async () => {
-  console.log('Running inventory check...');
+// cron.schedule('0 * * * *', async () => {
+//   console.log('Running inventory check...');
 
-  try {
-    const lowStockItems = await InventoryGp.find({ quantity: { $lt: 10 } });
+//   try {
+//     const lowStockItems = await InventoryGp.find({ quantity: { $lt: 10 } });
 
-    for (const item of lowStockItems) {
-      const notificationExists = await Notification.findOne({
-        inventoryId: item._id,
-        isRead: false,
-      });
+//     for (const item of lowStockItems) {
+//       const notificationExists = await Notification.findOne({
+//         inventoryId: item._id,
+//         isRead: false,
+//       });
 
-      if (!notificationExists) {
-        const message = `Inventory for ${item.name} is low. Please request restock from PHED.`;
+//       if (!notificationExists) {
+//         const message = `Inventory for ${item.name} is low. Please request restock from PHED.`;
 
-        await Notification.create({
-          grampanchayatId: item.grampanchayatId,
-          inventoryId: item._id,
-          message,
-        });
+//         await Notification.create({
+//           grampanchayatId: item.grampanchayatId,
+//           inventoryId: item._id,
+//           message,
+//         });
 
-        console.log(`Notification created for ${item.name}`);
-      }
-    }
-  } catch (error) {
-    console.error('Error running inventory check:', error);
-  }
-});
+//         console.log(`Notification created for ${item.name}`);
+//       }
+//     }
+//   } catch (error) {
+//     console.error('Error running inventory check:', error);
+//   }
+// });
