@@ -1122,4 +1122,43 @@ router.get("/get-bill/:consumerId", authenticateGrampanchayat, async (req, res) 
 
 
 
+
+// GET  http://localhost:5050/v1/api/grampanchayat/get-allbill
+router.get("/get-allbill", authenticateGrampanchayat, async (req, res) => {
+    const GrampanchayatId = req.user._id; // Get Gram Panchayat ID from authenticated user
+
+    try {
+        // Find bills for the authenticated Gram Panchayat
+        const bills = await Bill.find({ gpId: GrampanchayatId });
+
+        // if (bills.length === 0) {
+        //     return res.status(404).json({
+        //         success: false,
+        //         message: "NO bill Created"
+        //     });
+        // }
+
+        res.status(200).json({
+            success: true,
+            message: "All Bills retrieved successfully",
+            data: bills
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching bills",
+            error: error.message
+        });
+    }
+});
+
+
+
+
+
+
+
+
+
+
 module.exports = router;

@@ -11,6 +11,7 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
 const PhedUser = require('../../models/PhedUser');
 const Worker = require('../../models/Worker');
 const Grampanchayat = require('../../models/Grampanchayat');
+const Bill = require('../../models/Bill');
 const models = {
   GramUser,
   PhedUser,
@@ -526,6 +527,41 @@ router.post('/verify-otp', async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error.' });
   }
 });
+
+
+
+// GET  http://localhost:5050/v1/api/user/get-bill/:consumerId
+router.get("/get-bill/:consumerId", async (req, res) => {
+  console.log("consumer Id" );
+   
+    const { consumerId } = req.params; // Get consumerId from the request parameters
+    try {
+        // Find bills for the given consumerId and the authenticated Gram Panchayat
+        const bills = await Bill.find({ consumerId: consumerId });
+
+        if (bills.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No bills found for the specified consumer ID"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Bills retrieved successfully",
+            data: bills
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error fetching bills",
+            error: error.message
+        });
+    }
+});
+
+
+
 
 
 module.exports = router;
