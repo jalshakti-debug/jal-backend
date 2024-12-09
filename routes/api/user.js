@@ -40,7 +40,10 @@ router.post('/register', authenticateGrampanchayat, async (req, res) => {
         }
 
         // Generate unique consumerId
-        const consumerId = crypto.randomBytes(8).toString('hex').toUpperCase();
+        // const consumerId = crypto.randomBytes(8).toString('hex').toUpperCase();
+        const prefix = "CU";
+        const randomNumber = Math.floor(1000 + Math.random() * 9000); // Generates a number between 1000 and 9999
+        const  consumerId =  `${prefix}${randomNumber}`;
 
         // Generate a temporary password (it could also be set by Grampanchayat if required)
         const password = Math.floor(100000 + Math.random() * 900000).toString();
