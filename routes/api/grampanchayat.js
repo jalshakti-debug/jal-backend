@@ -72,16 +72,23 @@ router.post('/register', async (req, res) => {
 // Login API
 // http://localhost:5050/v1/api/grampanchayat/login
 router.post('/login', async (req, res) => {
-    const { grampanchayatId, password } = req.body;
+    const { grampanchayatId, password, mobile } = req.body;
 
     try {
-        // Validate input
-        if (!grampanchayatId || !password) {
-            return res.status(400).json({ success: false, message: 'Grampanchayat ID and password are required.' });
+        // Validate required fields
+        if (!mobile && !grampanchayatId) {
+            return res.status(400).json({ success: false, message: 'Mobile number or Gram Panchayat ID is required.' });
         }
-
+        if (!password) {
+            return res.status(400).json({ success: false, message: 'Password is required.' });
+        }
         // Check if the Grampanchayat exists
-        const grampanchayat = await Grampanchayat.findOne({ grampanchayatId });
+        let grampanchayat;
+        if (mobile) {
+            grampanchayat = await Grampanchayat.findOne({ mobile });
+        } else if (grampanchayatId) {
+            grampanchayat = await Grampanchayat.findOne({ grampanchayatId });
+        }
         if (!grampanchayat) {
             return res.status(404).json({ success: false, message: 'Grampanchayat not found.' });
         }
