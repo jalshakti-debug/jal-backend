@@ -26,6 +26,8 @@ app.use("/v1/api/user", require('./routes/api/user'));
 app.use("/v1/api/installed-assets", require('./routes/api/InstalledAsset'));
 app.use("/v1/api/financial-overview", require('./routes/api/financialOverview'));
 app.use("/v1/api/future-demand-forecasting", require('./routes/api/futureDemandForecasting'));
+app.use("/v1/api/file", require('./routes/api/fileuploader'));
+
 
 // TO Check Inventory is exits or no If exit then okay otherwise send notification
 // cron.schedule('0 * * * *', async () => {
