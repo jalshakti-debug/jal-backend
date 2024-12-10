@@ -8,7 +8,7 @@ const s3 = new AWS.S3();
 exports.uploadFile = async (file, filepath, fileName) => {
 	try {
 		const params = {
-			Bucket: 'prince-bucket-1',
+			Bucket: 'uploadre',
 			Key: `${filepath}/${fileName}`,
 			Body: file.buffer,
 			ContentType: file.mimetype,
