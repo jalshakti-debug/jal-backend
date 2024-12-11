@@ -6,6 +6,7 @@ const { authenticateGrampanchayat } = require('../../middlewear/auth');
 const Worker = require('../../models/Worker')
 
 // installed asset
+// POST  http://localhost:5050/v1/api/installed-assets
 router.post('/', async (req, res) => {
     try {
 
@@ -47,6 +48,8 @@ router.post('/', async (req, res) => {
     }
 });
 
+
+//  put http://localhost:5050/v1/api/installed-assets/:id
 // update installed assets
 router.put('/:id', async (req, res) => {
     try {
@@ -73,6 +76,8 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+//  get http://localhost:5050//v1/api/installed-assets/by-grampanchayat/:grampanchayatId
+
 // get by Grampanchayat
 router.get('/by-grampanchayat/:grampanchayatId', authenticateGrampanchayat, async (req, res) => {
     try {
@@ -91,6 +96,7 @@ router.get('/by-grampanchayat/:grampanchayatId', authenticateGrampanchayat, asyn
     }
 });
 
+//  get http://localhost:5050/v1/api/installed-assets/:id
 // get installed assets package
 router.get('/:id', async (req, res) => {
     try {
@@ -115,6 +121,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+//  delete http://localhost:5050/v1/api/installed-assets/:id
 // delete installed assets
 router.delete('/:id', async (req, res) => {
     try {
