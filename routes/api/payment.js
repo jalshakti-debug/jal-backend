@@ -11,6 +11,7 @@ const razorpayInstance = new Razorpay({
 });
 
 // Create Payment Order
+// POST http://localhost:5050/v1/api/payment/create-order
 router.post('/create-order', async (req, res) => {
     const { amount, billId } = req.body;
 
@@ -60,7 +61,9 @@ router.post('/create-order', async (req, res) => {
     }
 });
 
+
 // Verify Payment
+// post http://localhost:5050/v1/api/payment/verify-payment
 router.post('/verify-payment', async (req, res) => {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature, billId } = req.body;
 
