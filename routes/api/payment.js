@@ -1,16 +1,18 @@
-// controllers/paymentController.js
+const express = require('express');
 const Razorpay = require('razorpay');
-const Payment = require('../models/Payment');
+const Payment = require('../../models/payment');
+const Bill = require('../../models/Bill'); // Assuming this is the Bill model
+const router = express.Router();
 
 // Create Razorpay instance
 const razorpayInstance = new Razorpay({
-    key_id: 'your_razorpay_key_id',
-    key_secret: 'your_razorpay_key_secret'
+    key_id: 'rzp_test_a9SMVLbZY43C8M',
+    key_secret: 'KHRjIrGeafqMrzceR8ETW943'
 });
 
 // Create Payment Order
 router.post('/create-order', async (req, res) => {
-    const { amount } = req.body;  // amount should be in paise (1 INR = 100 paise)
+    const { amount, billId } = req.body;
 
     if (!amount || amount <= 0) {
         return res.status(400).json({
@@ -20,24 +22,30 @@ router.post('/create-order', async (req, res) => {
     }
 
     try {
+        const bill = await Bill.findById(billId);
+        if (!bill) {
+            return res.status(404).json({
+                success: false,
+                message: 'Bill not found'
+            });
+        }
+
         const options = {
             amount: amount * 100, // Convert to paise
             currency: 'INR',
             receipt: `receipt_order_${Date.now()}`,
-            payment_capture: 1
+            payment_capture: 1,
+            "notes": {
+                "note_key_1": "Jal shakati",
+                "note_key_2": "User pay the bill"
+            }
         };
 
         // Create Razorpay order
         const order = await razorpayInstance.orders.create(options);
+        console.log(order);
 
-        // Save the order in the database
-        const payment = new Payment({
-            amount,
-            razorpayOrderId: order.id
-        });
-
-        await payment.save();
-
+        // Respond with the order ID
         res.status(200).json({
             success: true,
             message: 'Order created successfully',
@@ -52,46 +60,64 @@ router.post('/create-order', async (req, res) => {
     }
 });
 
-// Verify Payment Signature
-router.post('/verify-payment', exports.verifyPayment = async (req, res) => {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+// Verify Payment
+router.post('/verify-payment', async (req, res) => {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, billId } = req.body;
 
     if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
         return res.status(400).json({
             success: false,
-            message: 'Missing required fields'
+            message: 'Missing payment details'
         });
     }
 
-    const payment = await Payment.findOne({ razorpayOrderId });
+    try {
+        const crypto = require('crypto');
+        const generatedSignature = crypto.createHmac('sha256', 'KHRjIrGeafqMrzceR8ETW943')
+            .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+            .digest('hex');
 
-    if (!payment) {
-        return res.status(400).json({
-            success: false,
-            message: 'Order not found'
+        if (generatedSignature !== razorpaySignature) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid signature verification'
+            });
+        }
+
+        // Update the bill and store payment details
+        const bill = await Bill.findById(billId);
+        if (!bill) {
+            return res.status(404).json({
+                success: false,
+                message: 'Bill not found'
+            });
+        }
+
+        bill.paidUnpade = 'paid';
+        await bill.save();
+
+        // Store payment details
+        const payment = new Payment({
+            billId: billId,
+            razorpayOrderId,
+            razorpayPaymentId,
+            amount: bill.amount,
+            date: new Date()
         });
-    }
 
-    const body = razorpayOrderId + '|' + razorpayPaymentId;
-    const crypto = require('crypto');
-    const expectedSignature = crypto.createHmac('sha256', 'your_razorpay_key_secret')
-                                     .update(body.toString())
-                                     .digest('hex');
-
-    if (expectedSignature === razorpaySignature) {
-        payment.status = 'completed';
-        payment.razorpayPaymentId = razorpayPaymentId;
-        payment.razorpaySignature = razorpaySignature;
         await payment.save();
 
         res.status(200).json({
             success: true,
-            message: 'Payment verified successfully'
+            message: 'Payment verified and details stored successfully'
         });
-    } else {
-        res.status(400).json({
+    } catch (error) {
+        console.error('Error verifying payment:', error);
+        res.status(500).json({
             success: false,
-            message: 'Invalid payment signature'
+            message: 'Server error while verifying payment'
         });
     }
 });
+
+module.exports = router;
