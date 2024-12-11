@@ -134,6 +134,21 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// 9. Get All Financial Data for Grampaanchayat
+router.get('/grampaanchayat/:grampanchayatId', async (req, res) => {
+    try {
+        // Extract Grampanchayat ID from the URL parameters
+        const { grampanchayatId } = req.params;
+        const financialData = await FinancialOverview.find({grampanchayatId});
+        if (!financialData) {
+            return res.status(400).json({ success: false, message: 'Financial data not found.' });
+        }
+        res.status(200).json({ success: true, message: 'Financial data fetched successfully.', data: financialData });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error fetching financial data.', error: error.message });
+    }
+});
+
 
 module.exports = router;
 
