@@ -13,6 +13,7 @@ const Grampanchayat = require('../../models/Grampanchayat');
 const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
 const {authenticateGrampanchayat, authenticateUser, authenticatePhedUser} = require('../../middlewear/auth');
 const Announcement = require('../../models/Announcement');
+const Vendor = require('../../models/Vendor')
 //---------------------------------------
 
 /**
@@ -485,11 +486,11 @@ router.get('/inventry/list', async (req, res) => {
 // http://localhost:5050/v1/api/phed/asset/give-to-gram/:gramPanchayatId
 router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
   const { gramPanchayatId } = req.params;
-  const { assetName, quantity, description, date  } = req.body;
+  const { assetName, quantity, description, date, vendorId  } = req.body;
 
   try {
     // Validate input
-    if (!assetName || !quantity || !description || !date) {
+    if (!assetName || !quantity || !description || !date || !vendorId) {
       return res.status(400).json({ success: false, message: 'All fields are required.' });
     }
 
@@ -514,6 +515,11 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Gram Panchayat not found.' });
     }
 
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor not found.' });
+    }
+
     // Deduct from AssetPhed quantity
     asset.quantity -= quantity;
     asset.editHistory.push({
@@ -523,6 +529,7 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
       description,
       creditOrDebit: 'debit',
       gramPanchayatId: gramPanchayat._id,
+      vendorId: vendor._id, // Use _id for vendor
     });
     await asset.save();
 
@@ -541,6 +548,7 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
             updatedQuantity: quantity,
             description: description || 'N/A',
             creditOrDebit: 'credit',
+            vendorId: vendor._id, // Use _id for vendor
           },
         ],
       });
@@ -553,6 +561,7 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
         updatedQuantity: newQuantity,
         description: description || 'N/A',
         creditOrDebit: 'credit',
+        vendorId: vendor._id, // Use _id for vendor
       });
       assetGP.quantity = newQuantity;
     }
@@ -561,8 +570,8 @@ router.post('/asset/give-to-gram/:gramPanchayatId', async (req, res) => {
     // Respond with success
     res.status(200).json({
       success: true,
-      message: `${quantity} ${assetName} successfully distributed to ${gramPanchayat.name}.`,
-      data: { updatedAsset: asset, updatedGpAsset: assetGP },
+      message: `${quantity} ${assetName} successfully distributed to ${gramPanchayat.name} via vendor ${vendor.name}.`,
+      data: { updatedAsset: asset, updatedGpAsset: assetGP, vendor },
     });
   } catch (error) {
     console.error('Error during asset distribution:', error);
@@ -592,7 +601,11 @@ router.get('/get-assets-by-gram/:gramPanchayatId', async (req, res) => {
     }
 
     // Fetch assets allocated to this Gram Panchayat
-    const assets = await AssetGp.find(query);
+    const assets = await AssetGp.find(query).populate({
+      path: 'editHistory.vendorId', // Path to vendorId field in editHistory
+      model: 'Vendor', // Model to populate
+      select: 'name contactNumber email address', // Fields to include in the response
+    });
 
     if (!assets.length) {
       return res.status(404).json({ success: false, message: 'No assets found for this Gram Panchayat.' });
@@ -608,6 +621,14 @@ router.get('/get-assets-by-gram/:gramPanchayatId', async (req, res) => {
         quantityAdded: entry.quantityAdded,
         updatedQuantity: entry.updatedQuantity,
         description: entry.description,
+        vendor: entry.vendorId
+          ? {
+              name: entry.vendorId.name,
+              contactNumber: entry.vendorId.contactNumber,
+              email: entry.vendorId.email,
+              address: entry.vendorId.address,
+            }
+          : null, 
       })),
     }));
 
@@ -888,5 +909,140 @@ router.get('/announcements', async (req, res) => {
     });
   }
 });
+
+router.post('/vendor/add', async (req, res) => {
+  const { name, contactNumber, address, email } = req.body;
+
+  try {
+    // Validate input
+    if (!name || !contactNumber || !address || !email) {
+      return res.status(400).json({ success: false, message: 'All fields are required.' });
+    }
+
+    // Create vendor
+    const newVendor = new Vendor({
+      name,
+      contactNumber,
+      address,
+      email,
+    });
+
+    await newVendor.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Vendor added successfully.',
+      data: newVendor,
+    });
+  } catch (error) {
+    console.error('Error adding vendor:', error);
+    res.status(500).json({ success: false, message: 'Server error.', error: error.message });
+  }
+});
+
+router.put('/vendor/update/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, contactNumber, address, email } = req.body;
+
+  try {
+    // Validate input
+    if (!name && !contactNumber && !address && !email) {
+      return res.status(400).json({ success: false, message: 'At least one field is required to update.' });
+    }
+
+    // Find and update the vendor
+    const updatedVendor = await Vendor.findByIdAndUpdate(
+      id,
+      { $set: { name, contactNumber, address, email } },
+      { new: true, runValidators: true } // Return updated document and validate fields
+    );
+
+    // Check if the vendor exists
+    if (!updatedVendor) {
+      return res.status(404).json({ success: false, message: 'Vendor not found.' });
+    }
+
+    // Respond with the updated vendor
+    res.status(200).json({
+      success: true,
+      message: 'Vendor updated successfully.',
+      data: updatedVendor,
+    });
+  } catch (error) {
+    console.error('Error updating vendor:', error);
+    res.status(500).json({ success: false, message: 'Server error.', error: error.message });
+  }
+});
+
+router.delete('/vendor/delete/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find and delete the vendor
+    const deletedVendor = await Vendor.findByIdAndDelete(id);
+
+    // Check if the vendor exists
+    if (!deletedVendor) {
+      return res.status(404).json({ success: false, message: 'Vendor not found.' });
+    }
+
+    // Respond with success message
+    res.status(200).json({
+      success: true,
+      message: 'Vendor deleted successfully.',
+      data: deletedVendor,
+    });
+  } catch (error) {
+    console.error('Error deleting vendor:', error);
+    res.status(500).json({ success: false, message: 'Server error.', error: error.message });
+  }
+});
+
+
+
+router.get('/vendor/list', async (req, res) => {
+  const { search = '' } = req.query;
+
+  try {
+    // Build query to search vendors by name
+    const query = search
+      ? { name: { $regex: search, $options: 'i' } } // Case-insensitive name search
+      : {};
+
+    // Fetch vendors matching the query
+    const vendors = await Vendor.find(query).select('name contactNumber address email');
+
+    // Check if vendors exist
+    if (!vendors.length) {
+      return res.status(404).json({ success: false, message: 'No vendors found.' });
+    }
+
+    // Respond with vendor data
+    res.status(200).json({
+      success: true,
+      message: 'Vendors retrieved successfully.',
+      data: vendors,
+    });
+  } catch (error) {
+    console.error('Error fetching vendors:', error);
+    res.status(500).json({ success: false, message: 'Server error.', error: error.message });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 module.exports = router;
