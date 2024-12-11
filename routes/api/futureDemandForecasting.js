@@ -5,6 +5,9 @@ const { authenticateGrampanchayat } = require('../../middlewear/auth');
 
 const InventoryGp = require('../../models/Inventry');
 
+
+// GET http://localhost:3000/v1/api/future-demand-forecasting
+
 router.get('/', authenticateGrampanchayat, async (req, res) => {
   try {
 
@@ -17,6 +20,8 @@ router.get('/', authenticateGrampanchayat, async (req, res) => {
     res.status(500).json({ error: 'Error fetching notifications' });
   }
 });
+
+// PATCH http://localhost:3000/v1/api/future-demand-forecasting/:notificationId/read
 
 router.patch('/:notificationId/read', async (req, res) => {
     try {
@@ -38,7 +43,10 @@ router.patch('/:notificationId/read', async (req, res) => {
     }
   });
 
-  
+
+
+//  GET http://localhost:3000/v1/api/future-demand-forecasting/:notificationId
+
   router.get('/:notificationId', async (req, res) => {
     try {
       const { notificationId } = req.params;
@@ -58,6 +66,7 @@ router.patch('/:notificationId/read', async (req, res) => {
     }
   });
 
+  // GET  http://localhost:3000/v1/api/future-demand-forecasting/
   router.post('/', async (req, res) => {
     try {
       const { grampanchayatId, inventoryId, message } = req.body;
