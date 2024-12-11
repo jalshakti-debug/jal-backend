@@ -18,6 +18,7 @@ const router = express.Router();
 const Alert = require('../../models/Alert'); // Import the Alert model
 const Bill = require("../../models/Bill")
 
+const CashBook = require('../../models/CashBook');
 
 
 
@@ -627,19 +628,30 @@ router.get('/complaintlist', authenticateGrampanchayat, async (req, res) => {
 });
 
 
-
-
-// Create a new fund request
-// POST http://localhost:5050/v1/api/grampanchayat/fund-request
 router.post('/fund-request', authenticateGrampanchayat, async (req, res) => {
     const { amountRequested, purpose } = req.body;
     const grampanchayatId = req.user._id; // Get the Grampanchayat ID from the authenticated user
+
+    // Input validation
+    if (!amountRequested || typeof amountRequested !== 'number' || amountRequested <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid amountRequested. It must be a positive number.',
+        });
+    }
+    if (!purpose || typeof purpose !== 'string' || purpose.trim() === '') {
+        return res.status(400).json({
+            success: false,
+            message: 'Purpose is required and must be a valid string.',
+        });
+    }
 
     try {
         const newRequest = new FundRequest({
             grampanchayatId,
             amountRequested,
             purpose,
+            status: 'Pending',
         });
 
         const savedRequest = await newRequest.save();
@@ -650,10 +662,12 @@ router.post('/fund-request', authenticateGrampanchayat, async (req, res) => {
         });
     } catch (error) {
         console.error('Error creating fund request:', error);
-        res.status(500).json({ success: false, message: 'Server error.' });
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while creating the fund request.',
+        });
     }
 });
-
 
 // Get all fund requests (for PHED)
 // GET http://localhost:5050/v1/api/grampanchayat/fund-request
@@ -667,17 +681,22 @@ router.get('/fund-request', async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching fund requests:', error);
-        res.status(500).json({ success: false, message: 'Server error.' });
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while fetching fund requests.',
+        });
     }
 });
 
-
-
 // Accept a fund request
 // PUT http://localhost:5050/v1/api/fund-request/accept/:id
-// Accept a fund request
 router.put('/accept/:id', async (req, res) => {
     const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ success: false, message: 'Invalid fund request ID.' });
+    }
 
     try {
         const request = await FundRequest.findById(id);
@@ -685,12 +704,18 @@ router.put('/accept/:id', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Fund request not found.' });
         }
 
+        if (request.status === 'Accepted') {
+            return res.status(400).json({
+                success: false,
+                message: 'Fund request is already accepted.',
+            });
+        }
+
         // Update the status to 'Accepted'
         request.status = 'Accepted';
         await request.save();
 
         // Create a cash book entry
-        const CashBook = require('../../models/CashBook');
         const cashEntry = new CashBook({
             fundRequestId: request._id,
             amount: request.amountRequested,
@@ -703,10 +728,10 @@ router.put('/accept/:id', async (req, res) => {
             message: 'Fund request accepted and cash book entry created successfully.',
         });
     } catch (error) {
+        console.error('Error accepting fund request:', error);
         res.status(500).json({
             success: false,
             message: 'An error occurred while accepting the fund request.',
-            error: error.message,
         });
     }
 });
