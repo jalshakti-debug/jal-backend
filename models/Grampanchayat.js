@@ -14,6 +14,12 @@ const grampanchayatSchema = new mongoose.Schema({
   password: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  type:{
+    type: String, 
+    required: false,
+    enum: ['normal', 'flood', 'famine'],
+    default: null
+  },
   mobile: { 
     type: String, 
     required: true, 

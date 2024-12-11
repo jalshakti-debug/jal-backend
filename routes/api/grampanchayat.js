@@ -24,7 +24,7 @@ const Bill = require("../../models/Bill")
 
 //http://localhost:5050/v1/api/grampanchayat/register
 router.post('/register', async (req, res) => {
-    const { name, grampanchayatId, address, villageName, city, district, state, pincode, mobile, password} = req.body;
+    const { name, grampanchayatId,type, address, villageName, city, district, state, pincode, mobile, password} = req.body;
 
     try {
         if ( !name || !grampanchayatId || !address || !villageName || !city || !district || !state || !pincode || !mobile || !password ) {
@@ -49,6 +49,7 @@ router.post('/register', async (req, res) => {
             villageName,
             city,
             district,
+            type: type,
             state,
             pincode,
             mobile,
