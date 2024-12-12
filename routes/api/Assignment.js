@@ -6,7 +6,7 @@ const Grampanchayat = require('../../models/Grampanchayat');
 
 
 // Create a new assignment
-router.post('/s', async (req, res) => {
+router.post('/new-assignment', async (req, res) => {
   try {
     const { vendorId, grampanchayatId, assetType, assetQuantity } = req.body;
 
