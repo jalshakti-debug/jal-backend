@@ -11,7 +11,7 @@ const gpAssetSchema = new mongoose.Schema({
       updatedQuantity: Number, // Quantity after the edit
       creditOrDebit: { type: String, enum: ['credit', 'debit'] },
       description: { type: String, required: true }, // Description of the change
-      vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
+      vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor', required: false },
     },
   ],
 });
