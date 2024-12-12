@@ -30,6 +30,7 @@ app.use("/v1/api/file", require('./routes/api/fileuploader'));
 app.use('/v1/api/grampanchayat_resource', require('./routes/api/GPResource'));
 app.use('/v1/api/payment', require('./routes/api/payment'));
 app.use('/v1/api/receipt', require('./routes/api/Receipt'));
+app.use('/v1/api/assignment', require('./routes/api/Assignment'));
 
 
 // TO Check Inventory is exits or no If exit then okay otherwise send notification

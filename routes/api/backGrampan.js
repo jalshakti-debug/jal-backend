@@ -888,6 +888,3 @@ router.get('/notification/list/grampanchayat/:grampanchayatId', async (req, res)
 module.exports = router;
 
 
-
-
-module.exports = router;
