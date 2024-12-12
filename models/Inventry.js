@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 
 const inventorySchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true }, // Invenory Name name
+  name: { type: String, required: true}, // Invenory Name name
   quantity: { type: Number, default: 0 }, // Current quantity of the asset
   grampanchayatId: { type: mongoose.Schema.Types.ObjectId, ref: 'Grampanchayat', required: true }, // Reference to Grampanchayat
   editHistory: [

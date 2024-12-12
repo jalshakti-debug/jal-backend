@@ -847,7 +847,6 @@ router.post('/announcements/:receiver', async (req, res) => {
 router.get('/announcements/:receiver', async (req, res) => {
   try {
     const { receiver } = req.params; // Get receiver (Grampanchayat _id) from URL params
-
     // Validate the receiver ID is a valid MongoDB ObjectId
     if (!mongoose.Types.ObjectId.isValid(receiver)) {
       return res.status(400).json({ error: 'Invalid Grampanchayat ID.' });

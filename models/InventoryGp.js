@@ -4,8 +4,7 @@ const mongoose = require('mongoose');
 const inventorySchema = new mongoose.Schema({
   name: { 
     type: String, 
-    required: true, 
-    unique: true, 
+    required: true,  
     trim: true // Ensures no trailing spaces
   }, // Inventory item name
   category: { 

@@ -12,6 +12,7 @@ const PhedUser = require('../../models/PhedUser');
 const Worker = require('../../models/Worker');
 const Grampanchayat = require('../../models/Grampanchayat');
 const Bill = require('../../models/Bill');
+const Announcement = require('../../models/Announcement');
 const models = {
   GramUser,
   PhedUser,
@@ -563,6 +564,79 @@ router.get("/get-bill/:consumerId", async (req, res) => {
     }
 });
 
+
+
+
+// POST API to send an announcement to a specific user by _id (from params)
+// http://localhost:5050/v1/api/user/announcements/67540400abcf60aeba862bf1
+router.post('/announcements/:receiver', async (req, res) => {
+  try {
+    const { receiver } = req.params; // Get receiver (User  _id) from URL params
+    const { message } = req.body; // Get message from the request body
+
+    // Validate request data
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required.' });
+    }
+
+    // Validate the receiver (User ) ID format
+    if (!mongoose.Types.ObjectId.isValid(receiver)) {
+      return res.status(400).json({ error: 'Invalid User ID format' });
+    }
+
+    // Check if User with the provided _id exists
+    const user = await GramUser.findById(receiver);
+    if (!user) {
+      return res.status(404).json({ error: 'User  not found.' });
+    }
+
+    // Create and save the announcement
+    const announcement = new Announcement({
+      message,
+      receiver: user._id,
+    });
+
+    const savedAnnouncement = await announcement.save();
+
+    res.status(201).json({
+      message: 'Announcement sent successfully to User.',
+      data: savedAnnouncement,
+    });
+  } catch (error) {
+    console.error('Error sending announcement:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET API to retrieve all announcements for a specific user by _id (from params)
+// http://localhost:5050/v1/api/user/announcements/67540400abcf60aeba862bf1
+router.get('/announcements/:receiver', async (req, res) => {
+  try {
+    const { receiver } = req.params; // Get receiver (User  _id) from URL params
+
+    // Validate the receiver (User ) ID format
+    if (!mongoose.Types.ObjectId.isValid(receiver)) {
+      return res.status(400).json({ error: 'Invalid User ID format' });
+    }
+
+    // Check if User with the provided _id exists
+    const user = await GramUser.findById(receiver);
+    if (!user) {
+      return res.status(404).json({ error: 'User  not found.' });
+    }
+
+    // Retrieve all announcements for the user
+    const announcements = await Announcement.find({ receiver: user._id });
+
+    res.status(200).json({
+      message: 'Announcements retrieved successfully.',
+      data: announcements,
+    });
+  } catch (error) {
+    console.error('Error retrieving announcements:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 
 
 
