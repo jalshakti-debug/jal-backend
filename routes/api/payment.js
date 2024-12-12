@@ -75,10 +75,10 @@ router.post('/verify-payment', async (req, res) => {
     }
 
     try {
-        const crypto = require('crypto');
-        const generatedSignature = crypto.createHmac('sha256', 'KHRjIrGeafqMrzceR8ETW943')
-            .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-            .digest('hex');
+        // const crypto = require('crypto');
+        // const generatedSignature = crypto.createHmac('sha256', 'KHRjIrGeafqMrzceR8ETW943')
+        //     .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        //     .digest('hex');
 
         if (generatedSignature !== razorpaySignature) {
             return res.status(400).json({
