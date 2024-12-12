@@ -4,6 +4,7 @@ const InstalledAsset = require('../../models/InstalledAsset');
 const AssetGp = require('../../models/gpAssets'); // Correct path to gpAssets.js
 const { authenticateGrampanchayat } = require('../../middlewear/auth');
 const Worker = require('../../models/Worker')
+const mongoose = require('mongoose');
 
 // installed asset
 // POST  http://localhost:5050/v1/api/installed-assets
@@ -146,7 +147,58 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+router.get('/get-assets-installed-by-worker/:workerId', async (req, res) => {
+    try {
+        const { workerId } = req.params;
 
+        // Validate workerId
+        if (!mongoose.Types.ObjectId.isValid(workerId)) {
+            return res.status(400).json({ message: 'Invalid worker ID' });
+        }
+
+        // Fetch data using aggregation pipeline
+        const assets = await InstalledAsset.aggregate([
+            {
+                $match: { workerId: new mongoose.Types.ObjectId(workerId) }
+            },
+            {
+                $lookup: {
+                    from: 'grampanchayats', // Replace with your actual Grampanchayat collection name
+                    localField: 'grampanchayatId',
+                    foreignField: '_id',
+                    as: 'grampanchayatDetails'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$grampanchayatDetails',
+                    preserveNullAndEmptyArrays: true // To include assets without Grampanchayat details
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    assetsType: 1,
+                    assetsStatus: 1,
+                    latitude: 1,
+                    longitude: 1,
+                    assetsIdentificationId: 1,
+                    status: 1,
+                    userId: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    'grampanchayatDetails.name': 1,
+                    'grampanchayatDetails.location': 1
+                }
+            }
+        ]);
+
+        return res.status(200).json({ success: true, data: assets });
+    } catch (error) {
+        console.error('Error fetching assets:', error);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
 
 
 module.exports = router;
