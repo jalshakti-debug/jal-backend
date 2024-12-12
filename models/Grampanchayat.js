@@ -17,7 +17,7 @@ const grampanchayatSchema = new mongoose.Schema({
   type:{
     type: String, 
     required: false,
-    enum: ['normal', 'flood', 'famine'],
+    enum: ['Flooded prone Area', 'flood', 'famine'],
     default: null
   },
   mobile: { 
