@@ -29,6 +29,7 @@ app.use("/v1/api/future-demand-forecasting", require('./routes/api/futureDemandF
 app.use("/v1/api/file", require('./routes/api/fileuploader'));
 app.use('/v1/api/grampanchayat_resource', require('./routes/api/GPResource'));
 app.use('/v1/api/payment', require('./routes/api/payment'));
+app.use('/v1/api/receipt', require('./routes/api/Receipt'))
 
 
 // TO Check Inventory is exits or no If exit then okay otherwise send notification
